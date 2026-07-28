@@ -1,0 +1,108 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { ServingForm, type ServingFormValues } from '@/components/ServingForm';
+import { ErrorState, Screen } from '@/components/ui';
+import { useCreateEntry } from '@/hooks/useEntries';
+import { toUserMessage } from '@/lib/errors';
+import { useRequireUser } from '@/providers/AuthProvider';
+import { uploadMealImage } from '@/api/images';
+import { decodeHandoff } from '@/services/nutrition/handoff';
+import { spacing } from '@/theme';
+
+/**
+ * The one screen that writes a food entry, reached identically from search,
+ * barcode and photo. Keeping a single save path means validation, image upload
+ * and cache invalidation exist once rather than three times.
+ */
+export default function ConfirmScreen() {
+  const router = useRouter();
+  const user = useRequireUser();
+  const params = useLocalSearchParams<{ item?: string; imageUri?: string }>();
+
+  const createEntry = useCreateEntry(user.id);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Route params are untrusted by the time they come back to us, so the payload
+  // is re-validated rather than cast.
+  const item = useMemo(() => decodeHandoff(params.item), [params.item]);
+  const imageUri = typeof params.imageUri === 'string' ? params.imageUri : null;
+
+  if (!item) {
+    return (
+      <Screen>
+        <ErrorState
+          message="We lost track of that food. Please pick it again."
+          onRetry={() => router.back()}
+        />
+      </Screen>
+    );
+  }
+
+  const handleSubmit = async (values: ServingFormValues) => {
+    if (busy) return;
+
+    setBusy(true);
+    setFormError(null);
+
+    try {
+      // Upload first: if storage rejects the image we must not leave a saved
+      // entry pointing at a file that does not exist.
+      let imagePath: string | null = null;
+      if (imageUri) {
+        imagePath = await uploadMealImage(user.id, imageUri);
+      }
+
+      await createEntry.mutateAsync({
+        name: values.name,
+        brand: item.brand,
+        caloriesPerServing: values.caloriesPerServing,
+        servingQuantity: values.servingQuantity,
+        servingUnit: values.servingUnit,
+        proteinG: item.proteinG,
+        carbsG: item.carbsG,
+        fatG: item.fatG,
+        source: item.source,
+        barcode: item.barcode ?? null,
+        consumedAt: new Date(),
+        imagePath,
+      });
+
+      // Back to Today rather than the search results, which are now stale in
+      // the user's mind — they just finished the task.
+      router.dismissTo('/');
+    } catch (error) {
+      setFormError(toUserMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Screen scroll avoidKeyboard>
+      <View style={styles.content}>
+        <ServingForm
+          initial={{
+            name: item.name,
+            brand: item.brand,
+            caloriesPerServing: item.caloriesPerServing,
+            servingQuantity: item.servingQuantity,
+            servingUnit: item.servingUnit,
+          }}
+          submitLabel="Add to today"
+          submitting={busy}
+          formError={formError}
+          onSubmit={(values) => void handleSubmit(values)}
+        />
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: {
+    paddingTop: spacing.lg,
+  },
+});

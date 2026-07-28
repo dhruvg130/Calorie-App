@@ -1,0 +1,28 @@
+import { Stack } from 'expo-router';
+
+import { colors, typography } from '@/theme';
+
+export default function LogLayout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        headerBackButtonDisplayMode: 'minimal',
+        headerTintColor: colors.primary,
+        headerStyle: { backgroundColor: colors.background },
+        headerTitleStyle: {
+          color: colors.text,
+          fontSize: typography.subheading.fontSize,
+          fontWeight: '600',
+        },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="search" options={{ title: 'Search food' }} />
+      <Stack.Screen name="scan" options={{ title: 'Scan barcode' }} />
+      <Stack.Screen name="photo" options={{ title: 'Photo' }} />
+      <Stack.Screen name="confirm" options={{ title: 'Add to today' }} />
+    </Stack>
+  );
+}

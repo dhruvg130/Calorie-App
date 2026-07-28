@@ -1,0 +1,8 @@
+project_id = "calorie-tracker"
+
+[functions.usda-search]
+# The platform rejects requests without a project-signed JWT before the function
+# runs. That is a useful first gate, but not sufficient on its own: the anon key
+# shipped in the app *is* such a JWT. The function additionally resolves the
+# token to a real user — see the header comment in functions/usda-search/index.ts.
+verify_jwt = true
