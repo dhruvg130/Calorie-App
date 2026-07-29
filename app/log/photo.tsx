@@ -11,7 +11,10 @@ import { encodeHandoff } from '@/services/nutrition/handoff';
 import { colors, radius, spacing } from '@/theme';
 
 /** Accepted at pick time; the bucket also enforces its own MIME allowlist. */
-const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const ALLOWED_MIME_TYPES = ['image/jpg', 'image/jpeg', 'image/png', 'image/webp'];
+
+/** Hard ceiling before processing. The bucket separately caps the upload at 5MB. */
+const MAX_PICK_BYTES = 15 * 1024 * 1024;
 
 export default function PhotoScreen() {
   const router = useRouter();
@@ -21,13 +24,22 @@ export default function PhotoScreen() {
   const [working, setWorking] = useState(false);
 
   const validateAsset = (asset: ImagePicker.ImagePickerAsset): string | null => {
-    const extension = asset.uri.split('.').pop()?.toLowerCase().split('?')[0] ?? '';
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    // Check the declared MIME type, never the URI extension. A picked asset is
+    // often a `blob:` URL (web), a `ph://` reference (iOS photo library) or a
+    // cache path with no suffix at all — sniffing an extension out of those
+    // rejects perfectly good photos.
+    const mimeType = asset.mimeType?.toLowerCase();
+    if (mimeType && !ALLOWED_MIME_TYPES.includes(mimeType)) {
       return 'Please choose a JPEG, PNG or WebP image.';
     }
-    if (typeof asset.fileSize === 'number' && asset.fileSize > 15 * 1024 * 1024) {
+
+    if (typeof asset.fileSize === 'number' && asset.fileSize > MAX_PICK_BYTES) {
       return 'That image is too large. Please choose one under 15 MB.';
     }
+
+    // When the platform reports no MIME type we accept the asset: it is
+    // re-encoded to JPEG before upload, so the bytes we send are a known format
+    // regardless of what came in, and the bucket's allowlist is the backstop.
     return null;
   };
 

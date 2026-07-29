@@ -14,6 +14,21 @@ import { absoluteFill, colors, radius, spacing } from '@/theme';
 /** Product barcodes only — QR and friends would just waste lookups. */
 const BARCODE_TYPES = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'itf14'] as const;
 
+/**
+ * Browsers expose `getUserMedia` only in a secure context — HTTPS, or
+ * localhost. Served over plain HTTP on a LAN address (which is how the Expo dev
+ * server is reached from a phone) the camera API is simply absent, so a
+ * permission request can never resolve and the button looks broken. Detect it
+ * up front and say so.
+ */
+function webCameraUnavailable(): boolean {
+  if (Platform.OS !== 'web') return false;
+  const isSecure =
+    typeof globalThis.isSecureContext === 'boolean' ? globalThis.isSecureContext : false;
+  const hasMediaDevices = Boolean(globalThis.navigator?.mediaDevices?.getUserMedia);
+  return !isSecure || !hasMediaDevices;
+}
+
 export default function ScanScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
@@ -73,6 +88,24 @@ export default function ScanScreen() {
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
         </View>
+      </Screen>
+    );
+  }
+
+  if (webCameraUnavailable()) {
+    return (
+      <Screen scroll>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="Scanning needs the mobile app"
+          description="Browsers only allow camera access over HTTPS, and the dev server runs over plain HTTP. Open this project in Expo Go on your phone to scan barcodes \u2014 or search for the product by name."
+          action={
+            <Button
+              label="Search instead"
+              onPress={() => router.replace('/log/search')}
+            />
+          }
+        />
       </Screen>
     );
   }

@@ -1,13 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { FoodEntry } from '@/api/entries';
 import { CalorieSummaryCard } from '@/components/CalorieSummaryCard';
 import { FoodEntryRow } from '@/components/FoodEntryRow';
 import { GoalEditSheet } from '@/components/GoalEditSheet';
-import { Button, EmptyState, EntryListSkeleton, ErrorState, Screen, Text } from '@/components/ui';
+import {
+  Banner,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  EntryListSkeleton,
+  ErrorState,
+  Screen,
+  Text,
+} from '@/components/ui';
 import { formatDayHeading } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { useDayTotals, useEntriesForDay } from '@/hooks/useEntries';
@@ -21,6 +30,9 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const entriesQuery = useEntriesForDay(user.id);
   const { dailyGoal, isLoading: profileLoading } = useProfile(user.id);
@@ -35,19 +47,19 @@ export default function HomeScreen() {
     [updateGoal],
   );
 
-  const handleSignOut = useCallback(() => {
-    Alert.alert('Sign out', 'You will need to sign in again to see your entries.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: () => {
-          void signOut().catch((error: unknown) => {
-            Alert.alert('Could not sign out', toUserMessage(error));
-          });
-        },
-      },
-    ]);
+  const confirmSignOut = useCallback(async () => {
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+      // No navigation needed: clearing the session flips the Stack.Protected
+      // guard in the root layout, which unmounts every authenticated route.
+    } catch (error: unknown) {
+      setSignOutError(toUserMessage(error));
+      setSignOutOpen(false);
+    } finally {
+      setSigningOut(false);
+    }
   }, [signOut]);
 
   const openEntry = useCallback(
@@ -85,7 +97,7 @@ export default function HomeScreen() {
               </View>
 
               <Pressable
-                onPress={handleSignOut}
+                onPress={() => setSignOutOpen(true)}
                 hitSlop={10}
                 style={styles.iconButton}
                 accessibilityRole="button"
@@ -94,6 +106,8 @@ export default function HomeScreen() {
                 <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
+
+            {signOutError ? <Banner message={signOutError} /> : null}
 
             <CalorieSummaryCard
               consumed={totals.consumed}
@@ -136,6 +150,17 @@ export default function HomeScreen() {
         saving={updateGoal.isPending}
         onDismiss={() => setGoalSheetOpen(false)}
         onSave={handleSaveGoal}
+      />
+
+      <ConfirmDialog
+        visible={signOutOpen}
+        title="Sign out"
+        message="You will need to sign in again to see your entries."
+        confirmLabel="Sign out"
+        destructive
+        loading={signingOut}
+        onConfirm={() => void confirmSignOut()}
+        onCancel={() => setSignOutOpen(false)}
       />
     </Screen>
   );

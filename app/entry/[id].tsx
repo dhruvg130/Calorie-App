@@ -2,11 +2,11 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { deleteMealImage, getSignedImageUrl } from '@/api/images';
 import { ServingForm, type ServingFormValues } from '@/components/ServingForm';
-import { Button, ErrorState, Screen } from '@/components/ui';
+import { Button, ConfirmDialog, ErrorState, Screen } from '@/components/ui';
 import { useDeleteEntry, useEntry, useUpdateEntry } from '@/hooks/useEntries';
 import { toUserMessage } from '@/lib/errors';
 import { useRequireUser } from '@/providers/AuthProvider';
@@ -23,6 +23,7 @@ export default function EditEntryScreen() {
   const deleteEntry = useDeleteEntry(user.id);
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const entry = entryQuery.data;
 
@@ -45,32 +46,22 @@ export default function EditEntryScreen() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert('Delete entry', 'This will remove it from today’s total.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              const imagePath = entry?.imagePath ?? null;
-              await deleteEntry.mutateAsync(entryId);
+  const confirmDelete = async () => {
+    try {
+      const imagePath = entry?.imagePath ?? null;
+      await deleteEntry.mutateAsync(entryId);
 
-              // Only after the row is gone — otherwise a failed delete would
-              // leave an entry pointing at a file we already removed.
-              if (imagePath) {
-                await deleteMealImage(imagePath).catch(() => undefined);
-              }
+      // Only after the row is gone — otherwise a failed delete would leave an
+      // entry pointing at a file we already removed.
+      if (imagePath) {
+        await deleteMealImage(imagePath).catch(() => undefined);
+      }
 
-              router.back();
-            } catch (error) {
-              setFormError(toUserMessage(error));
-            }
-          })();
-        },
-      },
-    ]);
+      router.back();
+    } catch (error) {
+      setDeleteOpen(false);
+      setFormError(toUserMessage(error));
+    }
   };
 
   if (entryQuery.isPending) {
@@ -144,12 +135,23 @@ export default function EditEntryScreen() {
             <Button
               label="Delete entry"
               variant="danger"
-              onPress={handleDelete}
+              onPress={() => setDeleteOpen(true)}
               loading={deleteEntry.isPending}
             />
           }
         />
       </View>
+
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete entry"
+        message={'This will remove it from today\u2019s total.'}
+        confirmLabel="Delete"
+        destructive
+        loading={deleteEntry.isPending}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </Screen>
   );
 }
