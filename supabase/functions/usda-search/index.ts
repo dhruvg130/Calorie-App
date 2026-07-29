@@ -66,6 +66,24 @@ type NutritionItem = {
   source: 'search';
 };
 
+/**
+ * USDA ranks purely by text relevance, which buries whole foods under branded
+ * products — searching "banana" returns a peanut butter spread named "BANANA"
+ * above the actual fruit. Someone logging a meal almost always wants the plain
+ * ingredient, so re-rank by data type and let relevance break ties within each
+ * tier. Lower is better.
+ */
+const DATA_TYPE_RANK: Record<string, number> = {
+  Foundation: 0,
+  'SR Legacy': 1,
+  'Survey (FNDDS)': 2,
+  Branded: 3,
+};
+
+function dataTypeRank(food: UsdaFood): number {
+  return DATA_TYPE_RANK[food.dataType ?? ''] ?? 4;
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -206,9 +224,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
-        pageSize,
-        dataType: ['Foundation', 'SR Legacy', 'Branded'],
-        requireAllWords: false,
+        // Over-fetch, then re-rank and trim below. USDA orders purely by text
+        // relevance and branded products dominate the head of that list, so a
+        // small page can contain no whole foods at all — leaving re-ranking
+        // nothing to promote. Asking for a wider window means the plain
+        // ingredient is actually present to be surfaced.
+        pageSize: Math.min(pageSize * 4, 200),
+        dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded'],
+        requireAllWords: true,
       }),
       signal: AbortSignal.timeout(10_000),
     });
@@ -225,9 +248,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const data = (await usdaResponse.json()) as { foods?: UsdaFood[] };
+
+  // Stable sort: USDA's relevance order is preserved inside each tier, so the
+  // best-matching whole food still wins among whole foods.
   const items = (data.foods ?? [])
-    .map(toNutritionItem)
-    .filter((item): item is NutritionItem => item !== null);
+    .map((food, index) => ({ food, index }))
+    .sort((a, b) => dataTypeRank(a.food) - dataTypeRank(b.food) || a.index - b.index)
+    .map(({ food }) => toNutritionItem(food))
+    .filter((item): item is NutritionItem => item !== null)
+    // Trim back to what the caller asked for, now that the ordering is useful.
+    .slice(0, pageSize);
 
   return json({ items });
 });
