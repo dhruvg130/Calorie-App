@@ -22,6 +22,17 @@ const envSchema = z.object({
     .url('EXPO_PUBLIC_SUPABASE_URL must be a valid URL like https://<project-ref>.supabase.co')
     .refine((value) => value.startsWith('https://'), {
       message: 'EXPO_PUBLIC_SUPABASE_URL must use https',
+    })
+    // The dashboard shows the Data API endpoint as `https://<ref>.supabase.co/rest/v1/`,
+    // which is easy to copy verbatim. supabase-js appends `/rest/v1/` itself, so
+    // keeping the path would produce `/rest/v1//rest/v1/...` and 404 on every
+    // query. Normalise to the origin rather than failing on a natural mistake.
+    .transform((value) => {
+      try {
+        return new URL(value).origin;
+      } catch {
+        return value.replace(/\/+$/, '');
+      }
     }),
   supabaseAnonKey: z
     .string('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
