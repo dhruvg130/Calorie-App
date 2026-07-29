@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
-import { fromKg, type WeightEntry } from '@/api/weight';
+import { fromKg, toKg, type WeightEntry } from '@/api/weight';
 import {
   Banner,
   Button,
@@ -16,16 +16,18 @@ import {
   Text,
 } from '@/components/ui';
 import { useDeleteWeight, useSaveWeight, useWeightEntries, useWeightTrend } from '@/hooks/useWeight';
-import { useProfile } from '@/hooks/useProfile';
+import { useProfile, useUpdateWeightUnit } from '@/hooks/useProfile';
 import { localDayKey } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { parseNumericInput } from '@/lib/validation';
 import { useRequireUser } from '@/providers/AuthProvider';
+import type { WeightUnit } from '@/lib/database.types';
 import { colors, radius, spacing } from '@/theme';
 
 export default function WeightScreen() {
   const user = useRequireUser();
   const { weightUnit } = useProfile(user.id);
+  const updateUnit = useUpdateWeightUnit(user.id);
 
   const entriesQuery = useWeightEntries(user.id);
   const saveWeight = useSaveWeight(user.id);
@@ -37,6 +39,27 @@ export default function WeightScreen() {
   const [pendingDelete, setPendingDelete] = useState<WeightEntry | null>(null);
 
   const format = (kg: number) => `${fromKg(kg, weightUnit).toFixed(1)} ${weightUnit}`;
+
+  /**
+   * Switching units converts whatever is already typed rather than clearing it.
+   * Stored weights are unaffected — they are kilograms either way, so this is
+   * purely a display preference.
+   */
+  const handleUnitChange = async (next: WeightUnit) => {
+    if (next === weightUnit) return;
+
+    const typed = parseNumericInput(input);
+    if (typed !== null && typed > 0) {
+      setInput(fromKg(toKg(typed, weightUnit), next).toFixed(1));
+    }
+
+    setError(null);
+    try {
+      await updateUnit.mutateAsync(next);
+    } catch (caught) {
+      setError(toUserMessage(caught));
+    }
+  };
 
   const handleSave = async () => {
     const value = parseNumericInput(input);
@@ -98,7 +121,30 @@ export default function WeightScreen() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text variant="title">Weight</Text>
+            <View style={styles.titleRow}>
+              <Text variant="title">Weight</Text>
+
+              <View style={styles.unitToggle}>
+                {(['lb', 'kg'] as WeightUnit[]).map((unit) => {
+                  const active = weightUnit === unit;
+                  return (
+                    <Pressable
+                      key={unit}
+                      onPress={() => void handleUnitChange(unit)}
+                      disabled={updateUnit.isPending}
+                      style={[styles.unitOption, active && styles.unitOptionActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Show weights in ${unit === 'lb' ? 'pounds' : 'kilograms'}`}
+                    >
+                      <Text variant="captionMedium" color={active ? 'inverse' : 'secondary'}>
+                        {unit}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
 
             <Card elevation="md" style={styles.summary}>
               <Text variant="overline" color="secondary">
@@ -210,6 +256,28 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: spacing.lg,
     gap: spacing.lg,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  unitToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.full,
+    padding: 3,
+  },
+  unitOption: {
+    minWidth: 44,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitOptionActive: {
+    backgroundColor: colors.primary,
   },
   summary: {
     gap: spacing.xs,

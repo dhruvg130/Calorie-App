@@ -57,3 +57,23 @@ export async function updateDailyGoal(userId: string, goal: number): Promise<Pro
     weightUnit: data.weight_unit,
   };
 }
+
+/**
+ * Changes only how weights are *displayed*. Stored values stay in kilograms, so
+ * switching units never rewrites history or introduces rounding drift into
+ * past weigh-ins.
+ */
+export async function updateWeightUnit(userId: string, unit: WeightUnit): Promise<Profile> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert({ id: userId, weight_unit: unit }, { onConflict: 'id' })
+    .select('id, daily_calorie_goal, weight_unit')
+    .single();
+
+  if (error) throw error;
+  return {
+    id: data.id,
+    dailyCalorieGoal: data.daily_calorie_goal,
+    weightUnit: data.weight_unit,
+  };
+}

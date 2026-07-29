@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { WeightUnit } from '@/lib/database.types';
+
 import {
   DEFAULT_DAILY_GOAL,
   DEFAULT_WEIGHT_UNIT,
   fetchProfile,
   updateDailyGoal,
+  updateWeightUnit,
   type Profile,
 } from '@/api/profile';
 
@@ -34,6 +37,20 @@ export function useUpdateDailyGoal(userId: string) {
 
   return useMutation({
     mutationFn: (goal: number) => updateDailyGoal(userId, goal),
+    onSuccess: (profile: Profile) => {
+      queryClient.setQueryData(profileKeys.detail(userId), profile);
+    },
+  });
+}
+
+export function useUpdateWeightUnit(userId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (unit: WeightUnit) => updateWeightUnit(userId, unit),
+    // Write straight into the cache rather than invalidating: the unit drives
+    // every number on the screen, and a refetch round-trip would show the old
+    // unit for a beat after the tap.
     onSuccess: (profile: Profile) => {
       queryClient.setQueryData(profileKeys.detail(userId), profile);
     },
