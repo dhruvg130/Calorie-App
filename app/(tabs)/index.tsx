@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { FoodEntry } from '@/api/entries';
+import { CalendarStrip } from '@/components/CalendarStrip';
 import { CalorieSummaryCard } from '@/components/CalorieSummaryCard';
 import { FoodEntryRow } from '@/components/FoodEntryRow';
 import { GoalEditSheet } from '@/components/GoalEditSheet';
@@ -17,9 +18,9 @@ import {
   Screen,
   Text,
 } from '@/components/ui';
-import { formatDayHeading } from '@/lib/date';
+import { formatRelativeDay, isToday } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
-import { useDayTotals, useEntriesForDay } from '@/hooks/useEntries';
+import { useDayTotals, useDayTotalsForDays, useEntriesForDay } from '@/hooks/useEntries';
 import { useProfile, useUpdateDailyGoal } from '@/hooks/useProfile';
 import { useAuth, useRequireUser } from '@/providers/AuthProvider';
 import { colors, spacing } from '@/theme';
@@ -29,16 +30,19 @@ export default function HomeScreen() {
   const { signOut } = useAuth();
   const router = useRouter();
 
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [visibleDays, setVisibleDays] = useState<Date[]>([]);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
-  const entriesQuery = useEntriesForDay(user.id);
+  const entriesQuery = useEntriesForDay(user.id, selectedDate);
   const { dailyGoal, isLoading: profileLoading } = useProfile(user.id);
   const updateGoal = useUpdateDailyGoal(user.id);
 
   const totals = useDayTotals(entriesQuery.data, dailyGoal);
+  const dayTotalsQuery = useDayTotalsForDays(user.id, visibleDays);
 
   const handleSaveGoal = useCallback(
     async (goal: number) => {
@@ -91,9 +95,15 @@ export default function HomeScreen() {
             <View style={styles.titleRow}>
               <View style={styles.titleText}>
                 <Text variant="caption" color="tertiary">
-                  {formatDayHeading()}
+                  {isToday(selectedDate)
+                    ? selectedDate.toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : 'Viewing'}
                 </Text>
-                <Text variant="title">Today</Text>
+                <Text variant="title">{formatRelativeDay(selectedDate)}</Text>
               </View>
 
               <Pressable
@@ -109,17 +119,30 @@ export default function HomeScreen() {
 
             {signOutError ? <Banner message={signOutError} /> : null}
 
+            <CalendarStrip
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              totals={dayTotalsQuery.data ?? {}}
+              dailyGoal={dailyGoal}
+              onVisibleDaysChange={setVisibleDays}
+            />
+
             <CalorieSummaryCard
               consumed={totals.consumed}
               goal={dailyGoal}
               remaining={totals.remaining}
               progress={totals.progress}
               isOver={totals.isOver}
+              macros={totals.macros}
               onEditGoal={() => setGoalSheetOpen(true)}
             />
 
             <Text variant="overline" color="secondary" style={styles.sectionLabel}>
-              {entriesQuery.data?.length ? `${entriesQuery.data.length} logged` : 'Logged today'}
+              {entriesQuery.data?.length
+                ? `${entriesQuery.data.length} logged`
+                : isToday(selectedDate)
+                  ? 'Logged today'
+                  : 'Logged this day'}
             </Text>
           </View>
         }
@@ -136,9 +159,23 @@ export default function HomeScreen() {
           ) : (
             <EmptyState
               icon="restaurant-outline"
-              title="Nothing logged yet"
-              description="Add your first meal and it will show up here with a running total."
-              action={<Button label="Add food" onPress={() => router.push('/add')} />}
+              title={isToday(selectedDate) ? 'Nothing logged yet' : 'Nothing logged that day'}
+              description={
+                isToday(selectedDate)
+                  ? 'Add your first meal and it will show up here with a running total.'
+                  : 'You did not log anything on this day. Pick another day, or jump back to today.'
+              }
+              action={
+                isToday(selectedDate) ? (
+                  <Button label="Add food" onPress={() => router.push('/add')} />
+                ) : (
+                  <Button
+                    label="Back to today"
+                    variant="secondary"
+                    onPress={() => setSelectedDate(new Date())}
+                  />
+                )
+              }
             />
           )
         }

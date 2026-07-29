@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { FoodEntryRow } from '@/lib/database.types';
-import { localDayRange } from '@/lib/date';
+import { localDayKey, localDayRange, rangeForDays } from '@/lib/date';
 import { foodEntrySchema, type FoodEntryInput } from '@/lib/validation';
 
 /** Camel-cased view of a row, so screens never touch snake_case column names. */
@@ -180,4 +180,40 @@ export async function updateEntry(id: string, input: UpdateEntryInput): Promise<
 export async function deleteEntry(id: string): Promise<void> {
   const { error } = await supabase.from('food_entries').delete().eq('id', id);
   if (error) throw error;
+}
+
+/** Calories logged per local day, keyed by `YYYY-MM-DD`. */
+export type DayTotals = Record<string, number>;
+
+/**
+ * Totals for every day in a range, used to draw the calendar's goal rings.
+ *
+ * Fetches only the two columns needed and aggregates on the device rather than
+ * adding a Postgres RPC: a visible month is at most a few hundred rows, the
+ * (user_id, consumed_at) index already serves this shape, and grouping here
+ * keeps day boundaries in the device's timezone — which is how the rest of the
+ * app defines a day. A SQL `date_trunc` would group in UTC and disagree with
+ * the Home screen near midnight.
+ *
+ * RLS scopes the rows to the caller, so there is no user_id filter.
+ */
+export async function fetchDayTotals(days: Date[]): Promise<DayTotals> {
+  if (days.length === 0) return {};
+
+  const { from, to } = rangeForDays(days);
+
+  const { data, error } = await supabase
+    .from('food_entries')
+    .select('consumed_at, total_calories')
+    .gte('consumed_at', from)
+    .lt('consumed_at', to);
+
+  if (error) throw error;
+
+  const totals: DayTotals = {};
+  for (const row of data) {
+    const key = localDayKey(new Date(row.consumed_at));
+    totals[key] = (totals[key] ?? 0) + toNumber(row.total_calories);
+  }
+  return totals;
 }

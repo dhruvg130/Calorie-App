@@ -4,9 +4,11 @@ import { useMemo } from 'react';
 import {
   createEntry,
   deleteEntry,
+  fetchDayTotals,
   fetchEntriesForDay,
   fetchEntry,
   updateEntry,
+  type DayTotals,
   type FoodEntry,
   type UpdateEntryInput,
 } from '@/api/entries';
@@ -22,6 +24,11 @@ export const entryKeys = {
   all: (userId: string) => ['entries', userId] as const,
   day: (userId: string, dayKey: string) => ['entries', userId, dayKey] as const,
   detail: (userId: string, id: string) => ['entries', userId, 'detail', id] as const,
+  // Nested under the same prefix as everything else, so the existing
+  // invalidateQueries({ queryKey: all(userId) }) in every mutation refreshes
+  // the calendar rings too — no separate bookkeeping to forget.
+  totals: (userId: string, fromKey: string, toKey: string) =>
+    ['entries', userId, 'totals', fromKey, toKey] as const,
 };
 
 export function useEntriesForDay(userId: string, date: Date = new Date()) {
@@ -30,6 +37,26 @@ export function useEntriesForDay(userId: string, date: Date = new Date()) {
   return useQuery({
     queryKey: entryKeys.day(userId, dayKey),
     queryFn: () => fetchEntriesForDay(date),
+  });
+}
+
+/**
+ * Calories per day across the calendar's visible range, for the goal rings.
+ *
+ * Keyed on the first and last visible day so paging to another week or month
+ * fetches once and is then served from cache on the way back.
+ */
+export function useDayTotalsForDays(userId: string, days: Date[]) {
+  const fromKey = days.length ? localDayKey(days[0]!) : '';
+  const toKey = days.length ? localDayKey(days[days.length - 1]!) : '';
+
+  return useQuery<DayTotals>({
+    queryKey: entryKeys.totals(userId, fromKey, toKey),
+    queryFn: () => fetchDayTotals(days),
+    enabled: days.length > 0,
+    // Rings are ambient context, not the headline number — a slightly stale
+    // ring is fine, and mutations invalidate this key anyway.
+    staleTime: 60_000,
   });
 }
 
@@ -44,8 +71,21 @@ export function useEntry(userId: string, id: string) {
 /** Totals derived from the day's rows — never stored, so they cannot drift. */
 export function useDayTotals(entries: FoodEntry[] | undefined, goal: number) {
   return useMemo(() => {
-    const consumed = (entries ?? []).reduce((sum, entry) => sum + entry.totalCalories, 0);
+    const rows = entries ?? [];
+    const consumed = rows.reduce((sum, entry) => sum + entry.totalCalories, 0);
     const remaining = goal - consumed;
+
+    // Macros are per serving in the row, so scale by the serving multiplier —
+    // the same arithmetic Postgres applies to produce total_calories. Entries
+    // whose source reported no macros contribute nothing rather than zero.
+    const macros = rows.reduce(
+      (acc, entry) => ({
+        proteinG: acc.proteinG + (entry.proteinG ?? 0) * entry.servingQuantity,
+        carbsG: acc.carbsG + (entry.carbsG ?? 0) * entry.servingQuantity,
+        fatG: acc.fatG + (entry.fatG ?? 0) * entry.servingQuantity,
+      }),
+      { proteinG: 0, carbsG: 0, fatG: 0 },
+    );
 
     return {
       consumed: Math.round(consumed),
@@ -53,6 +93,7 @@ export function useDayTotals(entries: FoodEntry[] | undefined, goal: number) {
       // Guard against a zero/negative goal producing Infinity or NaN in the bar.
       progress: goal > 0 ? consumed / goal : 0,
       isOver: consumed > goal,
+      macros,
     };
   }, [entries, goal]);
 }

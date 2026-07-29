@@ -1,5 +1,5 @@
 import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import { AppError } from '@/lib/errors';
@@ -58,8 +58,16 @@ export async function uploadMealImage(userId: string, localUri: string): Promise
 
   if (error) throw error;
 
-  // The local copy the picker made is no longer needed.
-  void FileSystem.deleteAsync(processed.uri, { idempotent: true }).catch(() => undefined);
+  // The re-encoded temp file is no longer needed once it is uploaded. Uses the
+  // File API rather than the legacy `deleteAsync`, which expo-file-system now
+  // ships only as a stub that throws a migration error.
+  // Best-effort: leaving a file in the cache directory is harmless, and the OS
+  // reclaims it — never fail a saved meal over cleanup.
+  try {
+    new File(processed.uri).delete();
+  } catch {
+    // ignored
+  }
 
   return path;
 }

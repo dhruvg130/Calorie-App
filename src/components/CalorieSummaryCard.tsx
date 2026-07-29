@@ -4,12 +4,15 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Card, ProgressBar, Text } from '@/components/ui';
 import { colors, radius, spacing } from '@/theme';
 
+export type Macros = { proteinG: number; carbsG: number; fatG: number };
+
 type CalorieSummaryCardProps = {
   consumed: number;
   goal: number;
   remaining: number;
   progress: number;
   isOver: boolean;
+  macros: Macros;
   onEditGoal: () => void;
 };
 
@@ -21,8 +24,12 @@ export function CalorieSummaryCard({
   remaining,
   progress,
   isOver,
+  macros,
   onEditGoal,
 }: CalorieSummaryCardProps) {
+  // Sources report macros inconsistently, so a day can have calories but no
+  // macro data. Showing three zeroes would look like a bug; hide the row.
+  const hasMacros = macros.proteinG > 0 || macros.carbsG > 0 || macros.fatG > 0;
   return (
     <Card elevation="md" style={styles.card}>
       <View style={styles.headerRow}>
@@ -63,7 +70,26 @@ export function CalorieSummaryCard({
         <View style={styles.divider} />
         <Stat label="Goal" value={formatNumber(goal)} />
       </View>
+
+      {hasMacros ? (
+        <View style={styles.macroRow}>
+          <Macro label="Protein" grams={macros.proteinG} />
+          <Macro label="Carbs" grams={macros.carbsG} />
+          <Macro label="Fat" grams={macros.fatG} />
+        </View>
+      ) : null}
     </Card>
+  );
+}
+
+function Macro({ label, grams }: { label: string; grams: number }) {
+  return (
+    <View style={styles.macro}>
+      <Text variant="caption" color="tertiary">
+        {label}
+      </Text>
+      <Text variant="bodyMedium">{Math.round(grams)}g</Text>
+    </View>
   );
 }
 
@@ -104,6 +130,19 @@ const styles = StyleSheet.create({
   },
   unit: {
     marginBottom: spacing.xs,
+  },
+  macroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.lg,
+    marginTop: -spacing.xs,
+  },
+  macro: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
   },
   statsRow: {
     flexDirection: 'row',
