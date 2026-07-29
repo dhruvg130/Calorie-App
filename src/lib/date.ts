@@ -129,3 +129,16 @@ export function formatRelativeDay(date: Date): string {
   if (isSameDay(date, addDays(new Date(), -1))) return 'Yesterday';
   return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 }
+
+/**
+ * The calendar day of `day` combined with the clock time of `time`.
+ *
+ * Used for back-dated entries: logging at 3pm for yesterday should store
+ * yesterday 3pm, not yesterday midnight, so it sorts naturally among that
+ * day's other entries.
+ */
+export function withTimeOfDay(day: Date, time: Date): Date {
+  const result = startOfLocalDay(day);
+  result.setHours(time.getHours(), time.getMinutes(), time.getSeconds(), 0);
+  return result;
+}

@@ -22,7 +22,9 @@ export default function LogLayout() {
       <Stack.Screen name="search" options={{ title: 'Search food' }} />
       <Stack.Screen name="scan" options={{ title: 'Scan barcode' }} />
       <Stack.Screen name="photo" options={{ title: 'Photo' }} />
-      <Stack.Screen name="confirm" options={{ title: 'Add to today' }} />
+      {/* Title is set by the screen itself — it depends on which day is
+          selected, which this layout does not know. */}
+      <Stack.Screen name="confirm" />
     </Stack>
   );
 }

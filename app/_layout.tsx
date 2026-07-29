@@ -9,6 +9,7 @@ import { SplashGate } from '@/components/SplashGate';
 import { envErrors, isEnvConfigured } from '@/lib/env';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { SelectedDayProvider } from '@/providers/SelectedDayProvider';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
@@ -30,8 +31,12 @@ export default function RootLayout() {
           {/* AuthProvider sits inside QueryProvider because signing out clears
               the query cache. */}
           <AuthProvider>
-            <StatusBar style="dark" />
-            <RootNavigator />
+            {/* Above the navigator so Home, the Add tab, the three method
+                screens and confirm all agree on which day is being logged. */}
+            <SelectedDayProvider>
+              <StatusBar style="dark" />
+              <RootNavigator />
+            </SelectedDayProvider>
           </AuthProvider>
         </QueryProvider>
       </SafeAreaProvider>

@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Screen, Text } from '@/components/ui';
+import { Banner, Screen, Text } from '@/components/ui';
+import { formatRelativeDay } from '@/lib/date';
+import { useSelectedDay } from '@/providers/SelectedDayProvider';
 import { colors, radius, shadows, spacing } from '@/theme';
 
 type Method = {
@@ -35,6 +37,7 @@ const METHODS: Method[] = [
 
 export default function AddScreen() {
   const router = useRouter();
+  const { selectedDay, isViewingToday } = useSelectedDay();
 
   return (
     <Screen scroll>
@@ -44,6 +47,15 @@ export default function AddScreen() {
           Pick how you want to log this meal.
         </Text>
       </View>
+
+      {isViewingToday ? null : (
+        <View style={styles.banner}>
+          <Banner
+            tone="info"
+            message={`Logging to ${formatRelativeDay(selectedDay)}. Switch back on the Today tab to log to today.`}
+          />
+        </View>
+      )}
 
       <View style={styles.methods}>
         {METHODS.map((method) => (
@@ -79,6 +91,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
     gap: spacing.xs,
+  },
+  banner: {
+    marginBottom: spacing.lg,
   },
   methods: {
     gap: spacing.md,

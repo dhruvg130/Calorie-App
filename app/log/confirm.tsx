@@ -1,12 +1,14 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ServingForm, type ServingFormValues } from '@/components/ServingForm';
-import { ErrorState, Screen } from '@/components/ui';
+import { Banner, ErrorState, Screen } from '@/components/ui';
 import { useCreateEntry } from '@/hooks/useEntries';
+import { formatRelativeDay } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { useRequireUser } from '@/providers/AuthProvider';
+import { useSelectedDay } from '@/providers/SelectedDayProvider';
 import { uploadMealImage } from '@/api/images';
 import { decodeHandoff } from '@/services/nutrition/handoff';
 import { spacing } from '@/theme';
@@ -22,6 +24,7 @@ export default function ConfirmScreen() {
   const params = useLocalSearchParams<{ item?: string; imageUri?: string }>();
 
   const createEntry = useCreateEntry(user.id);
+  const { selectedDay, isViewingToday, timestampForNewEntry } = useSelectedDay();
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -66,7 +69,9 @@ export default function ConfirmScreen() {
         fatG: item.fatG,
         source: item.source,
         barcode: item.barcode ?? null,
-        consumedAt: new Date(),
+        // Honours the day selected on Home, so logging while viewing a past
+        // day back-dates the entry instead of silently landing on today.
+        consumedAt: timestampForNewEntry(),
         imagePath,
       });
 
@@ -82,7 +87,20 @@ export default function ConfirmScreen() {
 
   return (
     <Screen scroll avoidKeyboard>
+      <Stack.Screen
+        options={{
+          title: isViewingToday ? 'Add to today' : `Add to ${formatRelativeDay(selectedDay)}`,
+        }}
+      />
+
       <View style={styles.content}>
+        {isViewingToday ? null : (
+          <Banner
+            tone="info"
+            message={`This will be added to ${formatRelativeDay(selectedDay)}, not today.`}
+          />
+        )}
+
         <ServingForm
           initial={{
             name: item.name,
@@ -91,7 +109,7 @@ export default function ConfirmScreen() {
             servingQuantity: item.servingQuantity,
             servingUnit: item.servingUnit,
           }}
-          submitLabel="Add to today"
+          submitLabel={isViewingToday ? 'Add to today' : `Add to ${formatRelativeDay(selectedDay)}`}
           submitting={busy}
           formError={formError}
           onSubmit={(values) => void handleSubmit(values)}
@@ -104,5 +122,6 @@ export default function ConfirmScreen() {
 const styles = StyleSheet.create({
   content: {
     paddingTop: spacing.lg,
+    gap: spacing.lg,
   },
 });
