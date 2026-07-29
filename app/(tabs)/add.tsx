@@ -2,7 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Banner, Screen, Text } from '@/components/ui';
+import { FoodResultRow } from '@/components/FoodResultRow';
+import { Banner, EntryListSkeleton, Screen, Text } from '@/components/ui';
+import { useRecentFoods } from '@/hooks/useEntries';
+import { useRequireUser } from '@/providers/AuthProvider';
+import { encodeHandoff } from '@/services/nutrition/handoff';
 import { formatRelativeDay } from '@/lib/date';
 import { useSelectedDay } from '@/providers/SelectedDayProvider';
 import { colors, radius, shadows, spacing } from '@/theme';
@@ -38,6 +42,8 @@ const METHODS: Method[] = [
 export default function AddScreen() {
   const router = useRouter();
   const { selectedDay, isViewingToday } = useSelectedDay();
+  const user = useRequireUser();
+  const recent = useRecentFoods(user.id);
 
   return (
     <Screen scroll>
@@ -56,6 +62,57 @@ export default function AddScreen() {
           />
         </View>
       )}
+
+      {recent.isPending ? (
+        <View style={styles.recent}>
+          <Text variant="overline" color="secondary" style={styles.recentLabel}>
+            Recent
+          </Text>
+          <EntryListSkeleton rows={2} />
+        </View>
+      ) : recent.data && recent.data.length > 0 ? (
+        <View style={styles.recent}>
+          <Text variant="overline" color="secondary" style={styles.recentLabel}>
+            Recent
+          </Text>
+          {recent.data.slice(0, 6).map((entry) => (
+            <FoodResultRow
+              key={entry.id}
+              item={{
+                id: entry.id,
+                name: entry.name,
+                brand: entry.brand,
+                caloriesPerServing: entry.caloriesPerServing,
+                servingQuantity: entry.servingQuantity,
+                servingUnit: entry.servingUnit,
+                proteinG: entry.proteinG,
+                carbsG: entry.carbsG,
+                fatG: entry.fatG,
+                source: 'search',
+              }}
+              onPress={() =>
+                router.push({
+                  pathname: '/log/confirm',
+                  params: {
+                    item: encodeHandoff({
+                      id: entry.id,
+                      name: entry.name,
+                      brand: entry.brand,
+                      caloriesPerServing: entry.caloriesPerServing,
+                      servingQuantity: entry.servingQuantity,
+                      servingUnit: entry.servingUnit,
+                      proteinG: entry.proteinG,
+                      carbsG: entry.carbsG,
+                      fatG: entry.fatG,
+                      source: 'search',
+                    }),
+                  },
+                })
+              }
+            />
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.methods}>
         {METHODS.map((method) => (
@@ -94,6 +151,13 @@ const styles = StyleSheet.create({
   },
   banner: {
     marginBottom: spacing.lg,
+  },
+  recent: {
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  recentLabel: {
+    marginLeft: spacing.xs,
   },
   methods: {
     gap: spacing.md,

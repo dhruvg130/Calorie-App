@@ -1,3 +1,4 @@
+import type { WeightUnit } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { dailyGoalSchema } from '@/lib/validation';
 
@@ -6,7 +7,11 @@ export const DEFAULT_DAILY_GOAL = 2000;
 export type Profile = {
   id: string;
   dailyCalorieGoal: number;
+  weightUnit: WeightUnit;
 };
+
+/** US-centric default; the DB column defaults to the same value. */
+export const DEFAULT_WEIGHT_UNIT: WeightUnit = 'lb';
 
 /**
  * A `profiles` row is created by a database trigger at sign-up. If it is
@@ -17,17 +22,21 @@ export type Profile = {
 export async function fetchProfile(userId: string): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, daily_calorie_goal')
+    .select('id, daily_calorie_goal, weight_unit')
     .eq('id', userId)
     .maybeSingle();
 
   if (error) throw error;
 
   if (!data) {
-    return { id: userId, dailyCalorieGoal: DEFAULT_DAILY_GOAL };
+    return { id: userId, dailyCalorieGoal: DEFAULT_DAILY_GOAL, weightUnit: DEFAULT_WEIGHT_UNIT };
   }
 
-  return { id: data.id, dailyCalorieGoal: data.daily_calorie_goal };
+  return {
+    id: data.id,
+    dailyCalorieGoal: data.daily_calorie_goal,
+    weightUnit: data.weight_unit,
+  };
 }
 
 export async function updateDailyGoal(userId: string, goal: number): Promise<Profile> {
@@ -38,9 +47,13 @@ export async function updateDailyGoal(userId: string, goal: number): Promise<Pro
   const { data, error } = await supabase
     .from('profiles')
     .upsert({ id: userId, daily_calorie_goal: validated }, { onConflict: 'id' })
-    .select('id, daily_calorie_goal')
+    .select('id, daily_calorie_goal, weight_unit')
     .single();
 
   if (error) throw error;
-  return { id: data.id, dailyCalorieGoal: data.daily_calorie_goal };
+  return {
+    id: data.id,
+    dailyCalorieGoal: data.daily_calorie_goal,
+    weightUnit: data.weight_unit,
+  };
 }

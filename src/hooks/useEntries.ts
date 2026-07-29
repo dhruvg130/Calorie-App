@@ -6,12 +6,14 @@ import {
   deleteEntry,
   fetchDayTotals,
   fetchEntriesForDay,
+  fetchRecentFoods,
   fetchEntry,
   updateEntry,
   type DayTotals,
   type FoodEntry,
   type UpdateEntryInput,
 } from '@/api/entries';
+import type { MealType } from '@/lib/database.types';
 import { localDayKey } from '@/lib/date';
 import type { FoodEntryInput } from '@/lib/validation';
 
@@ -102,7 +104,9 @@ export function useCreateEntry(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: FoodEntryInput & { imagePath?: string | null }) => createEntry(input),
+    mutationFn: (
+      input: FoodEntryInput & { imagePath?: string | null; mealType?: MealType | null },
+    ) => createEntry(input),
     onSuccess: () => {
       // Invalidate the whole user subtree rather than one day: an entry can be
       // logged with a back-dated `consumedAt`, which belongs to another day.
@@ -152,5 +156,19 @@ export function useDeleteEntry(userId: string) {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: entryKeys.all(userId) });
     },
+  });
+}
+
+/**
+ * Foods the user has logged before, for one-tap re-logging.
+ *
+ * Under the same cache prefix as everything else, so saving a new entry
+ * refreshes the list through the existing invalidation.
+ */
+export function useRecentFoods(userId: string) {
+  return useQuery({
+    queryKey: [...entryKeys.all(userId), 'recent'] as const,
+    queryFn: () => fetchRecentFoods(20),
+    staleTime: 60_000,
   });
 }

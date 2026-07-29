@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { DEFAULT_DAILY_GOAL, fetchProfile, updateDailyGoal, type Profile } from '@/api/profile';
+import {
+  DEFAULT_DAILY_GOAL,
+  DEFAULT_WEIGHT_UNIT,
+  fetchProfile,
+  updateDailyGoal,
+  type Profile,
+} from '@/api/profile';
 
 export const profileKeys = {
   detail: (userId: string) => ['profile', userId] as const,
@@ -19,6 +25,7 @@ export function useProfile(userId: string) {
     // Home should render immediately with a sensible target rather than
     // showing a blank goal while the profile is in flight.
     dailyGoal: query.data?.dailyCalorieGoal ?? DEFAULT_DAILY_GOAL,
+    weightUnit: query.data?.weightUnit ?? DEFAULT_WEIGHT_UNIT,
   };
 }
 

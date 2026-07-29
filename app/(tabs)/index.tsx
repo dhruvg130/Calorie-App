@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { FoodEntry } from '@/api/entries';
+import type { MealType } from '@/lib/database.types';
 import { CalendarStrip } from '@/components/CalendarStrip';
+import { MEAL_LABELS, MEAL_TYPES } from '@/components/MealTypePicker';
 import { CalorieSummaryCard } from '@/components/CalorieSummaryCard';
 import { FoodEntryRow } from '@/components/FoodEntryRow';
 import { GoalEditSheet } from '@/components/GoalEditSheet';
@@ -44,6 +46,45 @@ export default function HomeScreen() {
   const updateGoal = useUpdateDailyGoal(user.id);
 
   const totals = useDayTotals(entriesQuery.data, dailyGoal);
+
+  /**
+   * Meal sections flattened into one list, so the existing FlatList keeps its
+   * virtualisation rather than becoming a ScrollView of sub-lists.
+   *
+   * Entries logged before meal grouping existed have no meal_type; they fall
+   * into a trailing "Other" group rather than being hidden or guessed at.
+   */
+  const listData = useMemo(() => {
+    const entries = entriesQuery.data ?? [];
+    if (entries.length === 0) return [];
+
+    const rows: ({ kind: 'header'; key: string; label: string; calories: number }
+      | { kind: 'entry'; key: string; entry: FoodEntry })[] = [];
+
+    const groups = new Map<MealType | 'other', FoodEntry[]>();
+    for (const entry of entries) {
+      const key = (entry.mealType ?? 'other') as MealType | 'other';
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(entry);
+      else groups.set(key, [entry]);
+    }
+
+    const order: (MealType | 'other')[] = [...MEAL_TYPES, 'other'];
+    for (const meal of order) {
+      const bucket = groups.get(meal);
+      if (!bucket || bucket.length === 0) continue;
+      const calories = bucket.reduce((sum, e) => sum + e.totalCalories, 0);
+      rows.push({
+        kind: 'header',
+        key: `h-${meal}`,
+        label: meal === 'other' ? 'Other' : MEAL_LABELS[meal],
+        calories: Math.round(calories),
+      });
+      for (const entry of bucket) rows.push({ kind: 'entry', key: entry.id, entry });
+    }
+
+    return rows;
+  }, [entriesQuery.data]);
   const dayTotalsQuery = useDayTotalsForDays(user.id, visibleDays);
 
   const handleSaveGoal = useCallback(
@@ -78,9 +119,22 @@ export default function HomeScreen() {
   return (
     <Screen padded={false} edges={{ bottom: false }}>
       <FlatList
-        data={entriesQuery.data ?? []}
-        keyExtractor={(entry) => entry.id}
-        renderItem={({ item }) => <FoodEntryRow entry={item} onPress={openEntry} />}
+        data={listData}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) =>
+          item.kind === 'header' ? (
+            <View style={styles.mealHeader}>
+              <Text variant="captionMedium" color="secondary">
+                {item.label}
+              </Text>
+              <Text variant="caption" color="tertiary">
+                {item.calories.toLocaleString()} cal
+              </Text>
+            </View>
+          ) : (
+            <FoodEntryRow entry={item.entry} onPress={openEntry} />
+          )
+        }
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         showsVerticalScrollIndicator={false}
@@ -232,6 +286,14 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     marginTop: spacing.sm,
+  },
+  mealHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
   },
   separator: {
     height: spacing.sm,

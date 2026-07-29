@@ -11,6 +11,10 @@
 
 export type FoodSource = 'search' | 'barcode' | 'photo' | 'manual';
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+export type WeightUnit = 'kg' | 'lb';
+
 export type Database = {
   public: {
     Tables: {
@@ -18,15 +22,18 @@ export type Database = {
         Row: {
           id: string;
           daily_calorie_goal: number;
+          weight_unit: WeightUnit;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
           daily_calorie_goal?: number;
+          weight_unit?: WeightUnit;
         };
         Update: {
           daily_calorie_goal?: number;
+          weight_unit?: WeightUnit;
         };
         Relationships: [];
       };
@@ -44,6 +51,7 @@ export type Database = {
           carbs_g: number | null;
           fat_g: number | null;
           source: FoodSource;
+          meal_type: MealType | null;
           barcode: string | null;
           image_path: string | null;
           consumed_at: string;
@@ -62,6 +70,7 @@ export type Database = {
           carbs_g?: number | null;
           fat_g?: number | null;
           source: FoodSource;
+          meal_type?: MealType | null;
           barcode?: string | null;
           image_path?: string | null;
           consumed_at?: string;
@@ -75,9 +84,31 @@ export type Database = {
           protein_g?: number | null;
           carbs_g?: number | null;
           fat_g?: number | null;
+          meal_type?: MealType | null;
           barcode?: string | null;
           image_path?: string | null;
           consumed_at?: string;
+        };
+        Relationships: [];
+      };
+      weight_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          weight_kg: number;
+          recorded_on: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          weight_kg: number;
+          recorded_on?: string;
+        };
+        Update: {
+          weight_kg?: number;
+          recorded_on?: string;
         };
         Relationships: [];
       };
@@ -93,3 +124,4 @@ export type FoodEntryRow = Database['public']['Tables']['food_entries']['Row'];
 export type FoodEntryInsert = Database['public']['Tables']['food_entries']['Insert'];
 export type FoodEntryUpdate = Database['public']['Tables']['food_entries']['Update'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+export type WeightEntryRow = Database['public']['Tables']['weight_entries']['Row'];

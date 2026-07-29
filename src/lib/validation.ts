@@ -17,6 +17,8 @@ export const LIMITS = {
   macroMax: 5_000,
   goalMin: 500,
   goalMax: 10_000,
+  weightKgMin: 20,
+  weightKgMax: 500,
   passwordMin: 8,
   passwordMax: 72, // bcrypt truncates beyond 72 bytes; reject rather than silently cut
 } as const;
@@ -125,6 +127,14 @@ export const foodEntrySchema = z.object({
 });
 
 export type FoodEntryInput = z.infer<typeof foodEntrySchema>;
+
+/** Kilograms. Mirrors the weight_entries_range CHECK constraint. */
+export const weightSchema = z
+  .number()
+  .refine(Number.isFinite, 'Enter a valid weight')
+  .min(LIMITS.weightKgMin, 'That weight seems too low')
+  .max(LIMITS.weightKgMax, 'That weight seems too high')
+  .transform((value) => Math.round(value * 100) / 100);
 
 export const dailyGoalSchema = z
   .number()

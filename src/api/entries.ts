@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { FoodEntryRow } from '@/lib/database.types';
+import type { FoodEntryRow, MealType } from '@/lib/database.types';
 import { localDayKey, localDayRange, rangeForDays } from '@/lib/date';
 import { foodEntrySchema, type FoodEntryInput } from '@/lib/validation';
 
@@ -16,6 +16,7 @@ export type FoodEntry = {
   carbsG: number | null;
   fatG: number | null;
   source: FoodEntryRow['source'];
+  mealType: MealType | null;
   barcode: string | null;
   imagePath: string | null;
   consumedAt: string;
@@ -26,7 +27,7 @@ export type FoodEntry = {
  * to infer the row shape, and concatenation collapses that to an error type.
  */
 const COLUMNS =
-  'id, name, brand, calories_per_serving, serving_quantity, serving_unit, total_calories, protein_g, carbs_g, fat_g, source, barcode, image_path, consumed_at' as const;
+  'id, name, brand, calories_per_serving, serving_quantity, serving_unit, total_calories, protein_g, carbs_g, fat_g, source, meal_type, barcode, image_path, consumed_at' as const;
 
 /** The subset of a row that `COLUMNS` actually selects. */
 type SelectedRow = Pick<
@@ -42,6 +43,7 @@ type SelectedRow = Pick<
   | 'carbs_g'
   | 'fat_g'
   | 'source'
+  | 'meal_type'
   | 'barcode'
   | 'image_path'
   | 'consumed_at'
@@ -74,6 +76,7 @@ function mapRow(row: SelectedRow): FoodEntry {
     carbsG: toNullableNumber(row.carbs_g),
     fatG: toNullableNumber(row.fat_g),
     source: row.source,
+    mealType: row.meal_type,
     barcode: row.barcode,
     imagePath: row.image_path,
     consumedAt: row.consumed_at,
@@ -121,7 +124,7 @@ export async function fetchEntry(id: string): Promise<FoodEntry> {
  * `total_calories` is likewise absent — it is a generated column.
  */
 export async function createEntry(
-  input: FoodEntryInput & { imagePath?: string | null },
+  input: FoodEntryInput & { imagePath?: string | null; mealType?: MealType | null },
 ): Promise<FoodEntry> {
   const validated = foodEntrySchema.parse(input);
 
@@ -137,6 +140,7 @@ export async function createEntry(
       carbs_g: validated.carbsG,
       fat_g: validated.fatG,
       source: validated.source,
+      meal_type: input.mealType ?? null,
       barcode: validated.barcode,
       image_path: input.imagePath ?? null,
       consumed_at: validated.consumedAt.toISOString(),
@@ -153,6 +157,7 @@ export type UpdateEntryInput = {
   caloriesPerServing: number;
   servingQuantity: number;
   servingUnit: string;
+  mealType?: MealType | null;
 };
 
 export async function updateEntry(id: string, input: UpdateEntryInput): Promise<FoodEntry> {
@@ -168,6 +173,7 @@ export async function updateEntry(id: string, input: UpdateEntryInput): Promise<
       calories_per_serving: validated.caloriesPerServing,
       serving_quantity: validated.servingQuantity,
       serving_unit: validated.servingUnit,
+      ...(input.mealType === undefined ? {} : { meal_type: input.mealType }),
     })
     .eq('id', id)
     .select(COLUMNS)
@@ -216,4 +222,44 @@ export async function fetchDayTotals(days: Date[]): Promise<DayTotals> {
     totals[key] = (totals[key] ?? 0) + toNumber(row.total_calories);
   }
   return totals;
+}
+
+/**
+ * Distinct foods the user has logged before, most recent first.
+ *
+ * People eat the same twenty things, so this turns the common case from
+ * "search, scroll, pick, adjust, save" into one tap.
+ *
+ * Deduplication happens on the device rather than with a Postgres
+ * `distinct on`: PostgREST cannot express that, and the alternative is an RPC
+ * for what a single indexed scan plus a Map already answers. We over-fetch a
+ * fixed window and collapse it, which is bounded work.
+ *
+ * The key is name+brand+calories rather than name alone, so "Greek yogurt,
+ * 61 kcal" and "Greek yogurt, 120 kcal" stay distinct — they are genuinely
+ * different foods to log.
+ */
+export async function fetchRecentFoods(limit = 20): Promise<FoodEntry[]> {
+  const { data, error } = await supabase
+    .from('food_entries')
+    .select(COLUMNS)
+    .order('consumed_at', { ascending: false })
+    // Enough history to find `limit` distinct foods without unbounded reads.
+    .limit(200);
+
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const distinct: FoodEntry[] = [];
+
+  for (const row of data) {
+    const entry = mapRow(row);
+    const key = `${entry.name.toLowerCase()}|${(entry.brand ?? '').toLowerCase()}|${entry.caloriesPerServing}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    distinct.push(entry);
+    if (distinct.length >= limit) break;
+  }
+
+  return distinct;
 }
