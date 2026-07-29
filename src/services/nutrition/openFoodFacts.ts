@@ -50,6 +50,75 @@ function positiveNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+type OffProduct = {
+  code?: string;
+  product_name?: string;
+  brands?: string;
+  serving_size?: string;
+  nutriments?: OffNutriments;
+};
+
+/**
+ * Shared by barcode lookup and text search: both endpoints return the same
+ * product shape, so the nutrition maths and the database-constraint guards live
+ * in one place rather than being duplicated and drifting apart.
+ */
+function toNutritionItem(
+  product: OffProduct,
+  source: 'search' | 'barcode',
+  fallbackId?: string,
+): NutritionItem | null {
+  const nutriments = product.nutriments ?? {};
+
+  const name = product.product_name?.trim();
+  if (!name) return null;
+
+  // Prefer per-serving figures when the label declares them, since that is what
+  // the user is actually eating; otherwise fall back to per 100 g.
+  const perServing = positiveNumber(nutriments['energy-kcal_serving']);
+  const servingLabel = product.serving_size?.trim();
+  const useServing = perServing !== null && Boolean(servingLabel);
+
+  const kcal = useServing
+    ? perServing
+    : (positiveNumber(nutriments['energy-kcal_100g']) ??
+      // Some products only report kilojoules.
+      (positiveNumber(nutriments.energy_100g) !== null
+        ? positiveNumber(nutriments.energy_100g)! / 4.184
+        : null));
+
+  if (kcal === null) return null;
+
+  // Mirrors the database CHECK — never surface an item we could not save.
+  const calories = round2(kcal);
+  if (calories > 10_000) return null;
+
+  const macro = (servingKey: keyof OffNutriments, per100Key: keyof OffNutriments) => {
+    const raw = useServing
+      ? positiveNumber(nutriments[servingKey])
+      : positiveNumber(nutriments[per100Key]);
+    return raw === null ? null : round2(raw);
+  };
+
+  const brand = product.brands?.split(',')[0]?.trim() ?? '';
+  const code = product.code ?? fallbackId;
+  if (!code) return null;
+
+  return {
+    id: code,
+    name: name.slice(0, 200),
+    brand: brand ? brand.slice(0, 120) : null,
+    caloriesPerServing: calories,
+    servingQuantity: 1,
+    servingUnit: (useServing && servingLabel ? servingLabel : '100 g').slice(0, 60),
+    proteinG: macro('proteins_serving', 'proteins_100g'),
+    carbsG: macro('carbohydrates_serving', 'carbohydrates_100g'),
+    fatG: macro('fat_serving', 'fat_100g'),
+    source,
+    ...(source === 'barcode' ? { barcode: code } : {}),
+  };
+}
+
 export const openFoodFactsProvider: BarcodeLookupProvider = {
   async lookup(barcode: string, signal?: AbortSignal): Promise<NutritionItem | null> {
     // Validate before building a URL so a malformed scan cannot shape the request.
@@ -79,53 +148,7 @@ export const openFoodFactsProvider: BarcodeLookupProvider = {
     const payload = (await response.json()) as OffResponse;
     if (payload.status === 0 || !payload.product) return null;
 
-    const product = payload.product;
-    const nutriments = product.nutriments ?? {};
-
-    const name = product.product_name?.trim();
-    if (!name) return null;
-
-    // Prefer per-serving figures when the label declares them, since that is
-    // what the user is actually eating; otherwise fall back to per 100 g.
-    const perServing = positiveNumber(nutriments['energy-kcal_serving']);
-    const servingLabel = product.serving_size?.trim();
-    const useServing = perServing !== null && Boolean(servingLabel);
-
-    const kcal = useServing
-      ? perServing
-      : (positiveNumber(nutriments['energy-kcal_100g']) ??
-        // Some products only report kilojoules.
-        (positiveNumber(nutriments.energy_100g) !== null
-          ? positiveNumber(nutriments.energy_100g)! / 4.184
-          : null));
-
-    if (kcal === null) return null;
-
-    // Mirrors the database CHECK — never surface an item we could not save.
-    const calories = round2(kcal);
-    if (calories > 10_000) return null;
-
-    const macro = (servingKey: keyof OffNutriments, per100Key: keyof OffNutriments) => {
-      const raw = useServing
-        ? positiveNumber(nutriments[servingKey])
-        : positiveNumber(nutriments[per100Key]);
-      return raw === null ? null : round2(raw);
-    };
-
-    const brand = product.brands?.split(',')[0]?.trim() ?? '';
-
-    return {
-      id: product.code ?? barcode,
-      name: name.slice(0, 200),
-      brand: brand ? brand.slice(0, 120) : null,
-      caloriesPerServing: calories,
-      servingQuantity: 1,
-      servingUnit: (useServing && servingLabel ? servingLabel : '100 g').slice(0, 60),
-      proteinG: macro('proteins_serving', 'proteins_100g'),
-      carbsG: macro('carbohydrates_serving', 'carbohydrates_100g'),
-      fatG: macro('fat_serving', 'fat_100g'),
-      source: 'barcode',
-      barcode,
-    };
+    const item = toNutritionItem(payload.product, 'barcode', barcode);
+    return item;
   },
 };
