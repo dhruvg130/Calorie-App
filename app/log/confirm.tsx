@@ -74,7 +74,7 @@ export default function ConfirmScreen() {
         fatG: item.fatG,
         source: item.source,
         barcode: item.barcode ?? null,
-        mealType,
+        mealType: values.mealType,
         // Honours the day selected on Home, so logging while viewing a past
         // day back-dates the entry instead of silently landing on today.
         consumedAt: timestampForNewEntry(),

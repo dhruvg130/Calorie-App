@@ -18,6 +18,9 @@ type Method = {
   description: string;
 };
 
+/** Three is enough to be a shortcut without becoming a second list to scan. */
+const RECENT_LIMIT = 3;
+
 const METHODS: Method[] = [
   {
     href: '/log/search',
@@ -32,10 +35,10 @@ const METHODS: Method[] = [
     description: 'Point your camera at a packaged product.',
   },
   {
-    href: '/log/photo',
-    icon: 'camera-outline',
-    title: 'Take a picture',
-    description: 'Snap your meal and estimate its calories.',
+    href: '/log/manual',
+    icon: 'create-outline',
+    title: 'Enter manually',
+    description: 'Type in a meal or snack yourself.',
   },
 ];
 
@@ -75,7 +78,7 @@ export default function AddScreen() {
           <Text variant="overline" color="secondary" style={styles.recentLabel}>
             Recent
           </Text>
-          {recent.data.slice(0, 6).map((entry) => (
+          {recent.data.slice(0, RECENT_LIMIT).map((entry) => (
             <FoodResultRow
               key={entry.id}
               item={{

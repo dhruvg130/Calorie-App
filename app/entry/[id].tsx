@@ -126,6 +126,7 @@ export default function EditEntryScreen() {
             caloriesPerServing: entry.caloriesPerServing,
             servingQuantity: entry.servingQuantity,
             servingUnit: entry.servingUnit,
+            mealType: entry.mealType,
           }}
           submitLabel="Save changes"
           submitting={updateEntry.isPending}

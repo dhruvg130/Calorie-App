@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Card, Input, Text } from '@/components/ui';
+import { MealTypePicker, suggestMealType } from '@/components/MealTypePicker';
+import type { MealType } from '@/lib/database.types';
 import {
   LIMITS,
   firstIssue,
@@ -16,10 +18,19 @@ export type ServingFormValues = {
   caloriesPerServing: number;
   servingQuantity: number;
   servingUnit: string;
+  /** Null when the user clears the suggestion — grouping is optional. */
+  mealType: MealType | null;
 };
 
 type ServingFormProps = {
-  initial: ServingFormValues & { brand?: string | null };
+  /**
+   * `mealType` is optional here: the form suggests one from the time of day,
+   * so callers creating a new entry do not have to pick a starting value.
+   */
+  initial: Omit<ServingFormValues, 'mealType'> & {
+    brand?: string | null;
+    mealType?: MealType | null;
+  };
   submitLabel: string;
   submitting: boolean;
   formError?: string | null;
@@ -47,6 +58,11 @@ export function ServingForm({
   const [calories, setCalories] = useState(String(initial.caloriesPerServing));
   const [quantity, setQuantity] = useState(String(initial.servingQuantity));
   const [unit, setUnit] = useState(initial.servingUnit);
+  // Seeded from the time of day so the common case needs no interaction; the
+  // picker is still there when the guess is wrong.
+  const [mealType, setMealType] = useState<MealType | null>(
+    () => initial.mealType ?? suggestMealType(),
+  );
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
   const parsedCalories = parseNumericInput(calories);
@@ -87,6 +103,7 @@ export function ServingForm({
       caloriesPerServing: parsed.data.caloriesPerServing,
       servingQuantity: parsed.data.servingQuantity,
       servingUnit: parsed.data.servingUnit,
+      mealType,
     });
   };
 
@@ -179,6 +196,8 @@ export function ServingForm({
         maxLength={7}
         right={<Ionicons name="flame-outline" size={18} color={colors.textTertiary} />}
       />
+
+      <MealTypePicker value={mealType} onChange={setMealType} />
 
       {formError ? <Banner message={formError} /> : null}
 

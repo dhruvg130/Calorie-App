@@ -24,6 +24,7 @@ export default function LogLayout() {
       <Stack.Screen name="photo" options={{ title: 'Photo' }} />
       {/* Title is set by the screen itself — it depends on which day is
           selected, which this layout does not know. */}
+      <Stack.Screen name="manual" />
       <Stack.Screen name="confirm" />
     </Stack>
   );
