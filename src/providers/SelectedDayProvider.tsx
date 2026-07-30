@@ -2,17 +2,54 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 import { isToday, startOfLocalDay, withTimeOfDay } from '@/lib/date';
 
-type SelectedDayContextValue = {
-  /** The day Home is showing, and the day new entries are logged to. */
+export type DaySelection = {
+  /** The day the screen is showing, and the day its writes are dated to. */
   selectedDay: Date;
   setSelectedDay: (date: Date) => void;
   isViewingToday: boolean;
-  /** Timestamp to store for a new entry logged right now, on the selected day. */
-  timestampForNewEntry: () => Date;
   resetToToday: () => void;
 };
 
+type SelectedDayContextValue = DaySelection & {
+  /** Timestamp to store for a new entry logged right now, on the selected day. */
+  timestampForNewEntry: () => Date;
+};
+
 const SelectedDayContext = createContext<SelectedDayContextValue | null>(null);
+
+/**
+ * Day-selection state, on its own so a screen can hold a private copy instead
+ * of joining the shared one below.
+ *
+ * `initialDay` is read once, at mount. That is the point: the Weight tab seeds
+ * itself from whatever day Home is on, so arriving there from a back-dated Home
+ * view keeps your place — but the two then move independently. Sharing the
+ * state outright would mean tapping a weigh-in from March silently retargets
+ * where your next meal gets logged.
+ */
+export function useDaySelection(initialDay?: Date): DaySelection {
+  const [selectedDay, setSelectedDayState] = useState(() =>
+    startOfLocalDay(initialDay ?? new Date()),
+  );
+
+  const setSelectedDay = useCallback((date: Date) => {
+    setSelectedDayState(startOfLocalDay(date));
+  }, []);
+
+  const resetToToday = useCallback(() => {
+    setSelectedDayState(startOfLocalDay(new Date()));
+  }, []);
+
+  return useMemo(
+    () => ({
+      selectedDay,
+      setSelectedDay,
+      isViewingToday: isToday(selectedDay),
+      resetToToday,
+    }),
+    [selectedDay, setSelectedDay, resetToToday],
+  );
+}
 
 /**
  * Shared above the tabs because the logging flow spans them: Home picks the
@@ -22,15 +59,8 @@ const SelectedDayContext = createContext<SelectedDayContextValue | null>(null);
  * button, since the tab bar carries no params.
  */
 export function SelectedDayProvider({ children }: { children: ReactNode }) {
-  const [selectedDay, setSelectedDayState] = useState(() => startOfLocalDay(new Date()));
-
-  const setSelectedDay = useCallback((date: Date) => {
-    setSelectedDayState(startOfLocalDay(date));
-  }, []);
-
-  const resetToToday = useCallback(() => {
-    setSelectedDayState(startOfLocalDay(new Date()));
-  }, []);
+  const day = useDaySelection();
+  const { selectedDay } = day;
 
   /**
    * Back-dated entries keep the current clock time rather than landing at
@@ -43,14 +73,8 @@ export function SelectedDayProvider({ children }: { children: ReactNode }) {
   }, [selectedDay]);
 
   const value = useMemo<SelectedDayContextValue>(
-    () => ({
-      selectedDay,
-      setSelectedDay,
-      isViewingToday: isToday(selectedDay),
-      timestampForNewEntry,
-      resetToToday,
-    }),
-    [selectedDay, setSelectedDay, timestampForNewEntry, resetToToday],
+    () => ({ ...day, timestampForNewEntry }),
+    [day, timestampForNewEntry],
   );
 
   return <SelectedDayContext.Provider value={value}>{children}</SelectedDayContext.Provider>;

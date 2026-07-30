@@ -33,6 +33,18 @@ export function localDayKey(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Inverse of `localDayKey`, for the date-keyed rows that weigh-ins use.
+ *
+ * Anchored at local noon before being floored: parsing `2026-07-28` on its own
+ * would be read as UTC midnight and land on the 27th for anyone west of
+ * Greenwich, and midnight-local is the one instant a DST jump can move across a
+ * day boundary.
+ */
+export function dayKeyToDate(key: string): Date {
+  return startOfLocalDay(new Date(`${key}T12:00:00`));
+}
+
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, {
     hour: 'numeric',
@@ -128,6 +140,17 @@ export function formatRelativeDay(date: Date): string {
   if (isToday(date)) return 'Today';
   if (isSameDay(date, addDays(new Date(), -1))) return 'Yesterday';
   return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+/**
+ * Same idea as `formatRelativeDay`, abbreviated — "Wed, Jul 22" rather than
+ * "Wednesday, July 22". For rows that also hold controls, where the long form
+ * wraps on a narrow phone.
+ */
+export function formatCompactDay(date: Date): string {
+  if (isToday(date)) return 'Today';
+  if (isSameDay(date, addDays(new Date(), -1))) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 /**

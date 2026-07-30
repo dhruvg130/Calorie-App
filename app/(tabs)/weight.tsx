@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { fromKg, toKg, type WeightEntry } from '@/api/weight';
+import { DayStepper } from '@/components/DayStepper';
 import { WeightChart } from '@/components/WeightChart';
 import {
   Banner,
@@ -18,16 +19,17 @@ import {
 } from '@/components/ui';
 import { useDeleteWeight, useSaveWeight, useWeightEntries, useWeightTrend } from '@/hooks/useWeight';
 import { useProfile, useUpdateWeightUnit } from '@/hooks/useProfile';
-import { localDayKey } from '@/lib/date';
+import { dayKeyToDate, formatCompactDay, localDayKey } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { parseNumericInput } from '@/lib/validation';
 import { useRequireUser } from '@/providers/AuthProvider';
+import { useDaySelection, useSelectedDay } from '@/providers/SelectedDayProvider';
 import type { WeightUnit } from '@/lib/database.types';
 import { colors, radius, spacing } from '@/theme';
 
 export default function WeightScreen() {
   const user = useRequireUser();
-  const { weightUnit } = useProfile(user.id);
+  const { weightUnit, isLoading: profileLoading } = useProfile(user.id);
   const updateUnit = useUpdateWeightUnit(user.id);
 
   const entriesQuery = useWeightEntries(user.id);
@@ -35,11 +37,44 @@ export default function WeightScreen() {
   const deleteWeight = useDeleteWeight(user.id);
   const trend = useWeightTrend(entriesQuery.data);
 
+  // Seeded from the day Home is on, then independent of it — see useDaySelection.
+  const { selectedDay: homeDay } = useSelectedDay();
+  const { selectedDay, setSelectedDay, isViewingToday, resetToToday } = useDaySelection(homeDay);
+  const dayKey = localDayKey(selectedDay);
+
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<WeightEntry | null>(null);
 
   const format = (kg: number) => `${fromKg(kg, weightUnit).toFixed(1)} ${weightUnit}`;
+
+  const entryForDay = useMemo(
+    () => (entriesQuery.data ?? []).find((entry) => entry.recordedOn === dayKey) ?? null,
+    [entriesQuery.data, dayKey],
+  );
+
+  /**
+   * The field always shows what is stored for the selected day, so stepping
+   * onto a day you have already weighed puts you straight into editing it
+   * rather than facing a blank box.
+   *
+   * Guarded by a signature rather than a plain dependency list: a unit switch
+   * must not re-run this, because `handleUnitChange` has already converted
+   * whatever the user typed and re-syncing here would throw that away.
+   *
+   * Held back until the profile resolves, because `weightUnit` reads as the
+   * default until then. Filling 165.0 in under a "kg" label is not just untidy
+   * — save it and 165 kg is what gets stored.
+   */
+  const signature = `${dayKey}:${entryForDay?.id ?? ''}:${entryForDay?.weightKg ?? ''}`;
+  const syncedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (profileLoading || syncedRef.current === signature) return;
+    syncedRef.current = signature;
+    setInput(entryForDay ? fromKg(entryForDay.weightKg, weightUnit).toFixed(1) : '');
+    setError(null);
+  }, [profileLoading, signature, entryForDay, weightUnit]);
 
   /**
    * Switching units converts whatever is already typed rather than clearing it.
@@ -71,12 +106,9 @@ export default function WeightScreen() {
 
     setError(null);
     try {
-      await saveWeight.mutateAsync({
-        value,
-        unit: weightUnit,
-        recordedOn: localDayKey(new Date()),
-      });
-      setInput('');
+      await saveWeight.mutateAsync({ value, unit: weightUnit, recordedOn: dayKey });
+      // Left in place rather than cleared: the field is now showing the day's
+      // stored weight, which is exactly what was just saved.
     } catch (caught) {
       setError(toUserMessage(caught));
     }
@@ -102,23 +134,27 @@ export default function WeightScreen() {
         keyExtractor={(entry) => entry.id}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <Pressable
-            onLongPress={() => setPendingDelete(item)}
-            style={styles.row}
-            accessibilityRole="button"
-            accessibilityLabel={`${format(item.weightKg)} on ${item.recordedOn}. Long press to delete.`}
-          >
-            <Text variant="bodyMedium">{format(item.weightKg)}</Text>
-            <Text variant="caption" color="tertiary">
-              {new Date(`${item.recordedOn}T12:00:00`).toLocaleDateString(undefined, {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const day = dayKeyToDate(item.recordedOn);
+          const selected = item.recordedOn === dayKey;
+
+          return (
+            <Pressable
+              onPress={() => setSelectedDay(day)}
+              onLongPress={() => setPendingDelete(item)}
+              style={[styles.row, selected && styles.rowSelected]}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${format(item.weightKg)} on ${formatCompactDay(day)}`}
+              accessibilityHint="Opens this day for editing. Long press to delete."
+            >
+              <Text variant="bodyMedium">{format(item.weightKg)}</Text>
+              <Text variant="caption" color={selected ? 'primary' : 'tertiary'}>
+                {formatCompactDay(day)}
+              </Text>
+            </Pressable>
+          );
+        }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListHeaderComponent={
           <View style={styles.header}>
@@ -146,6 +182,8 @@ export default function WeightScreen() {
                 })}
               </View>
             </View>
+
+            <DayStepper date={selectedDay} onChange={setSelectedDay} onToday={resetToToday} />
 
             <Card elevation="md" style={styles.summary}>
               <Text variant="overline" color="secondary">
@@ -181,7 +219,11 @@ export default function WeightScreen() {
 
             <Card style={styles.entryCard}>
               <Input
-                label={`Today's weight (${weightUnit})`}
+                label={
+                  isViewingToday
+                    ? `Today's weight (${weightUnit})`
+                    : `Weight for ${formatCompactDay(selectedDay)} (${weightUnit})`
+                }
                 value={input}
                 onChangeText={setInput}
                 keyboardType="decimal-pad"
@@ -191,12 +233,14 @@ export default function WeightScreen() {
                 error={error ?? undefined}
               />
               <Button
-                label="Save weight"
+                label={entryForDay ? 'Update weight' : 'Save weight'}
                 onPress={() => void handleSave()}
                 loading={saveWeight.isPending}
               />
               <Text variant="caption" color="tertiary" style={styles.hint}>
-                One weigh-in per day. Saving again replaces today&apos;s.
+                {entryForDay
+                  ? `Replaces the ${format(entryForDay.weightKg)} already logged for this day.`
+                  : 'One weigh-in per day. Pick a past day above to fill one in.'}
               </Text>
             </Card>
 
@@ -239,7 +283,9 @@ export default function WeightScreen() {
         title="Delete weigh-in"
         message={
           pendingDelete
-            ? `Remove the ${format(pendingDelete.weightKg)} entry from ${pendingDelete.recordedOn}?`
+            ? `Remove the ${format(pendingDelete.weightKg)} entry from ${formatCompactDay(
+                dayKeyToDate(pendingDelete.recordedOn),
+              )}?`
             : ''
         }
         confirmLabel="Delete"
@@ -309,6 +355,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    // Transparent rather than absent so selecting a row does not resize it.
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  rowSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   separator: {
     height: spacing.sm,
