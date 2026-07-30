@@ -6,3 +6,17 @@ project_id = "calorie-tracker"
 # shipped in the app *is* such a JWT. The function additionally resolves the
 # token to a real user — see the header comment in functions/usda-search/index.ts.
 verify_jwt = true
+
+[functions.whoop]
+# Called by the app with the user's session, and every action resolves that
+# token to a real user before touching anything.
+verify_jwt = true
+
+[functions.whoop-callback]
+# The one unauthenticated endpoint in this project, and it has to be: this is
+# WHOOP redirecting a browser, which carries no session of any kind.
+#
+# What stands in for authentication is the `state` parameter — 32 random bytes
+# minted server-side, stored against the user who began the flow, single-use,
+# and valid for ten minutes. See functions/whoop-callback/index.ts.
+verify_jwt = false

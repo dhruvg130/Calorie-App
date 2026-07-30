@@ -130,12 +130,21 @@ automatically — you do not set those yourself.
 Skip this entirely if you are not connecting WHOOP — the rest of the app works
 without it.
 
-1. Apply [`migrations/0003_whoop.sql`](./migrations/0003_whoop.sql) in the SQL
-   Editor, the same way as the earlier migrations.
+1. Apply [`migrations/0003_whoop.sql`](./migrations/0003_whoop.sql) and then
+   [`migrations/0004_whoop_auth_state.sql`](./migrations/0004_whoop_auth_state.sql)
+   in the SQL Editor, the same way as the earlier migrations.
 
 2. Register an app at <https://developer.whoop.com>. You need a public privacy
-   policy URL, and a redirect of `calorietracker://whoop-callback`. Request
-   these scopes:
+   policy URL, and this redirect — your project ref, then the callback path:
+
+   ```
+   https://YOUR_PROJECT_REF.supabase.co/functions/v1/whoop-callback
+   ```
+
+   An https callback rather than a `calorietracker://` one is what lets the
+   whole flow run in Expo Go: a custom scheme cannot be delivered to a project
+   running inside Expo Go, so a native build would otherwise be mandatory just
+   to log in. Request these scopes:
 
    ```
    read:workout read:cycles read:recovery read:sleep read:body_measurement offline
@@ -156,10 +165,16 @@ without it.
    npx supabase secrets set WHOOP_CLIENT_SECRET=your-client-secret
    ```
 
-4. Deploy:
+4. Deploy both functions. The callback **must** be deployed with
+   `--no-verify-jwt`, or the platform will reject WHOOP's redirect before the
+   function ever runs — a browser redirect carries no JWT:
 
    ```bash
    npx supabase functions deploy whoop
+   ```
+
+   ```bash
+   npx supabase functions deploy whoop-callback --no-verify-jwt
    ```
 
 ### Why the tokens are not in the app

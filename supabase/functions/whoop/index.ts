@@ -24,8 +24,16 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
-const WHOOP_API = 'https://api.prod.whoop.com/developer';
+import {
+  CORS_HEADERS,
+  WHOOP_API,
+  WHOOP_AUTHORIZE_URL,
+  WHOOP_SCOPES,
+  expiryFrom,
+  fail,
+  json,
+  requestToken,
+} from '../_shared/whoop.ts';
 
 /** Refresh this long before expiry rather than waiting for a 401 mid-sync. */
 const REFRESH_MARGIN_MS = 60_000;
@@ -38,24 +46,6 @@ const PAGE_LIMIT = 25;
 
 /** Ceiling on pages per collection, so a bad next_token cannot loop forever. */
 const MAX_PAGES = 20;
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-  });
-}
-
-/** Generic messages only — never echo WHOOP's errors to the client. */
-function fail(status: number, message: string): Response {
-  return json({ error: message }, status);
-}
 
 // ---------------------------------------------------------------------------
 // WHOOP payload shapes. Only the fields actually used are declared; everything
@@ -155,47 +145,6 @@ type TokenRow = {
   refresh_token: string;
   expires_at: string;
 };
-
-type WhoopTokenResponse = {
-  access_token?: string;
-  refresh_token?: string;
-  expires_in?: number;
-  scope?: string;
-};
-
-async function requestToken(body: URLSearchParams): Promise<WhoopTokenResponse | null> {
-  let response: Response;
-  try {
-    response = await fetch(WHOOP_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch (error) {
-    console.error('WHOOP token request failed', error);
-    return null;
-  }
-
-  if (!response.ok) {
-    // Status only. The body can echo the client secret back in some error
-    // shapes, and this lands in logs.
-    console.error('WHOOP token endpoint responded with status', response.status);
-    return null;
-  }
-
-  const data = (await response.json()) as WhoopTokenResponse;
-  if (!data.access_token || !data.refresh_token) {
-    console.error('WHOOP token response was missing tokens');
-    return null;
-  }
-  return data;
-}
-
-function expiryFrom(expiresIn: number | undefined): string {
-  const seconds = typeof expiresIn === 'number' && Number.isFinite(expiresIn) ? expiresIn : 3600;
-  return new Date(Date.now() + seconds * 1000).toISOString();
-}
 
 /**
  * A valid access token for this user, refreshing first if it is close to
@@ -338,60 +287,53 @@ const isScored = (record: WhoopRecord) => record.score_state === 'SCORED' && Boo
 // Actions
 // ---------------------------------------------------------------------------
 
-async function handleExchange(
+/**
+ * Begins the OAuth flow: mints a state, records who it belongs to, and hands
+ * back the URL to open.
+ *
+ * The state is generated here rather than in the app on purpose. It is what the
+ * public callback uses to decide whose account a WHOOP login belongs to, which
+ * makes it a credential — and a client-chosen credential is one an attacker can
+ * choose too. `crypto.getRandomValues` is the platform CSPRNG.
+ */
+async function handleStart(
   admin: SupabaseClient,
   userId: string,
   clientId: string,
-  clientSecret: string,
-  code: string,
   redirectUri: string,
 ): Promise<Response> {
-  const tokens = await requestToken(
-    new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri,
-    }),
-  );
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const state = Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 
-  if (!tokens) return fail(502, 'Could not connect to WHOOP. Please try again.');
+  const { error } = await admin.from('whoop_auth_states').insert({
+    state,
+    user_id: userId,
+    redirect_uri: redirectUri,
+    // Long enough to log in and pass a 2FA prompt, short enough that an
+    // abandoned attempt is not left standing open.
+    expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+  });
 
-  const expiresAt = expiryFrom(tokens.expires_in);
-
-  const { error: tokenError } = await admin.from('whoop_tokens').upsert(
-    {
-      user_id: userId,
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_at: expiresAt,
-      scope: tokens.scope ?? null,
-    },
-    { onConflict: 'user_id' },
-  );
-
-  if (tokenError) {
-    console.error('Failed to store WHOOP tokens', tokenError.message);
-    return fail(500, 'Could not connect to WHOOP. Please try again.');
+  if (error) {
+    console.error('Failed to record WHOOP auth state', error.message);
+    return fail(500, 'Could not start the WHOOP connection. Please try again.');
   }
 
-  const { error: connectionError } = await admin.from('whoop_connections').upsert(
-    {
-      user_id: userId,
-      scope: tokens.scope ?? null,
-      connected_at: new Date().toISOString(),
-      needs_reauth: false,
-    },
-    { onConflict: 'user_id' },
-  );
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: WHOOP_SCOPES,
+    state,
+  });
 
-  if (connectionError) {
-    console.error('Failed to store WHOOP connection', connectionError.message);
-    return fail(500, 'Could not connect to WHOOP. Please try again.');
-  }
-
-  return json({ connected: true });
+  // The state is not returned. The app has no use for it — the callback does
+  // the exchange — and sending it back would put a live credential on the
+  // device for no reason.
+  return json({ authorizeUrl: `${WHOOP_AUTHORIZE_URL}?${params}` });
 }
 
 async function handleSync(
@@ -623,11 +565,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const action = typeof body.action === 'string' ? body.action : '';
 
   switch (action) {
-    case 'exchange': {
-      const code = typeof body.code === 'string' ? body.code.trim() : '';
-      const redirectUri = typeof body.redirectUri === 'string' ? body.redirectUri.trim() : '';
-      if (!code || !redirectUri) return fail(400, 'Invalid request.');
-      return handleExchange(admin, userId, clientId, clientSecret, code, redirectUri);
+    case 'start': {
+      // Derived from this project's own URL rather than taken from the request.
+      // A caller-supplied redirect would let someone point the authorization at
+      // a host they control and collect the code themselves.
+      const redirectUri = `${supabaseUrl}/functions/v1/whoop-callback`;
+      return handleStart(admin, userId, clientId, redirectUri);
     }
 
     case 'sync': {
