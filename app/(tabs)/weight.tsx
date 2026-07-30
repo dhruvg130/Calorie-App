@@ -5,7 +5,6 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { fromKg, toKg, type WeightEntry } from '@/api/weight';
 import { DayStepper } from '@/components/DayStepper';
 import { WeightChart } from '@/components/WeightChart';
-import { WhoopCard } from '@/components/WhoopCard';
 import {
   Banner,
   Button,
@@ -19,7 +18,6 @@ import {
   Text,
 } from '@/components/ui';
 import { useDeleteWeight, useSaveWeight, useWeightEntries, useWeightTrend } from '@/hooks/useWeight';
-import { useWhoopDay, useWhoopDays } from '@/hooks/useWhoop';
 import { useProfile, useUpdateWeightUnit } from '@/hooks/useProfile';
 import { dayKeyToDate, formatCompactDay, localDayKey } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
@@ -55,8 +53,6 @@ export default function WeightScreen() {
     [entriesQuery.data, dayKey],
   );
 
-  const whoopQuery = useWhoopDays(user.id);
-  const whoopDay = useWhoopDay(whoopQuery.data, dayKey);
 
   /**
    * The field always shows what is stored for the selected day, so stepping
@@ -221,8 +217,6 @@ export default function WeightScreen() {
             {entriesQuery.data ? (
               <WeightChart entries={entriesQuery.data} unit={weightUnit} />
             ) : null}
-
-            <WhoopCard userId={user.id} day={whoopDay} isToday={isViewingToday} />
 
             <Card style={styles.entryCard}>
               <Input

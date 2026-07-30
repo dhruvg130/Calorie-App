@@ -2,8 +2,10 @@
 
 ## Built
 
-- **Connect / disconnect / sync** — `WhoopCard` on the Weight tab.
+- **Connect / disconnect / sync** — `WhoopCard`, on the Recovery tab.
 - **Recovery, strain, sleep** for the selected day.
+- **Recovery-based nutrition** — green/yellow/red drives a suggestion on the Recovery tab.
+- **A dedicated Recovery tab** with per-day strain, sleep, HRV, resting HR and burn.
 - **Burned calories** as a line on the Home summary, shown but never added to the
   goal. See the `earned` prop comment in `CalorieSummaryCard` for why.
 
@@ -13,14 +15,8 @@ Ordered by what each one needs, not by how good it is. Two of these are gated on
 having history to compare against — building them first would mean shipping a
 screen that says nothing for a fortnight.
 
-### 1. Recovery-based nutrition
 
-Green / yellow / red drives a short suggestion. Recovery already syncs, and one
-day of data is enough, so this is the cheapest real feature left.
-
-Needs a `whoop_daily` row for today. Nothing new server-side.
-
-### 2. Protein target from strain
+### 1. Protein target from strain
 
 Scale the protein goal with the day's activity — rest day lower, double session
 higher — with a progress bar against it.
@@ -28,7 +24,7 @@ higher — with a progress bar against it.
 Needs a protein goal on `profiles` (there is only a calorie goal today) and a
 rule mapping strain to grams. One day of data.
 
-### 3. Energy availability
+### 2. Energy availability
 
 Burned vs eaten, with an honest read when the gap is large. Note this is the one
 feature where the *warning* direction is the safe one: flagging chronic
@@ -37,21 +33,21 @@ under-fuelling is useful, and it should never nudge toward a bigger deficit.
 Needs `cycle_kcal` (already synced) rather than `workout_kcal`, since this is
 about total expenditure. One day of data.
 
-### 4. Strain vs calories vs weight chart
+### 3. Strain vs calories vs weight chart
 
 Three series on one time axis. `WeightChart` already plots by date and can be
 generalised rather than duplicated.
 
 Needs ~2 weeks before the shape means anything.
 
-### 5. Weekly summary
+### 4. Weekly summary
 
 Sunday roundup: average strain, calories, protein, recovery, weight change, plus
 a sentence naming the most obvious pattern.
 
 Needs ~3 weeks. Aggregation is a query, not a table.
 
-### 6. "What changed?" — the flagship
+### 5. "What changed?" — the flagship
 
 Today versus the user's own recent baseline: recovery, protein, bedtime, strain,
 and which of those tend to move together.

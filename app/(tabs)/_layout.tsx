@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 
+import { isWhoopConfigured } from '@/api/whoop';
 import { colors, spacing, typography } from '@/theme';
 
 export default function TabsLayout() {
@@ -49,6 +50,17 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="analytics" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="whoop"
+        options={{
+          title: 'Recovery',
+          tabBarIcon: ({ color, size }) => <Ionicons name="pulse" size={size} color={color} />,
+          // A build with no WHOOP client ID does not show a tab that can only
+          // explain why it is empty. `href: null` removes the route entirely
+          // rather than rendering a disabled-looking tab.
+          href: isWhoopConfigured ? undefined : null,
         }}
       />
     </Tabs>
