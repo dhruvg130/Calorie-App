@@ -2,12 +2,10 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { MealTypePicker, suggestMealType } from '@/components/MealTypePicker';
 import { ServingForm, type ServingFormValues } from '@/components/ServingForm';
 import { Banner, ErrorState, Screen } from '@/components/ui';
 import { useCreateEntry } from '@/hooks/useEntries';
 import { formatRelativeDay } from '@/lib/date';
-import type { MealType } from '@/lib/database.types';
 import { toUserMessage } from '@/lib/errors';
 import { useRequireUser } from '@/providers/AuthProvider';
 import { useSelectedDay } from '@/providers/SelectedDayProvider';
@@ -27,9 +25,9 @@ export default function ConfirmScreen() {
 
   const createEntry = useCreateEntry(user.id);
   const { selectedDay, isViewingToday, timestampForNewEntry } = useSelectedDay();
-  // Pre-selected from the clock so the common case needs no tap; still
-  // changeable, and clearable by tapping the chosen chip again.
-  const [mealType, setMealType] = useState<MealType | null>(() => suggestMealType());
+  // The meal picker lives inside ServingForm, which is also what supplies the
+  // saved value below. A second copy here was pure decoration: its state never
+  // reached handleSubmit.
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -106,8 +104,6 @@ export default function ConfirmScreen() {
             message={`This will be added to ${formatRelativeDay(selectedDay)}, not today.`}
           />
         )}
-
-        <MealTypePicker value={mealType} onChange={setMealType} />
 
         <ServingForm
           initial={{

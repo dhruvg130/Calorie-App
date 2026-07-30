@@ -228,7 +228,6 @@ export default function WeightScreen() {
                 onChangeText={setInput}
                 keyboardType="decimal-pad"
                 placeholder={weightUnit === 'kg' ? '75.0' : '165.0'}
-                returnKeyType="done"
                 onSubmitEditing={() => void handleSave()}
                 error={error ?? undefined}
               />

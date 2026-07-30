@@ -87,7 +87,6 @@ export function GoalEditSheet({
             }}
             error={error ?? undefined}
             keyboardType="number-pad"
-            returnKeyType="done"
             onSubmitEditing={handleSave}
             autoFocus
             selectTextOnFocus
