@@ -27,59 +27,27 @@ import { adminClient, readConfig, requestToken, storeTokens } from '../_shared/w
 
 /**
  * The browser cannot be sent back into the app — Expo Go owns no custom scheme
- * — so this page is the end of the journey. The app notices the connection on
- * its own by polling, which is why this says to close the window rather than
+ * — so this response is the end of the journey. The app notices the connection
+ * on its own by polling, which is why this says to close the window rather than
  * offering a link that would not work.
+ *
+ * WHY PLAIN TEXT AND NOT A STYLED PAGE
+ *
+ * The Edge Function gateway forces `content-type: text/plain` and a
+ * `default-src 'none'; sandbox` CSP onto every response, which is what stops
+ * *.supabase.co from being used to host convincing phishing pages. HTML sent
+ * from here is therefore displayed as source, not rendered — so it is not sent.
+ *
+ * Kept to ASCII deliberately: the forced content-type carries no charset, so a
+ * tick or an em dash arrives as mojibake.
  */
 function page(title: string, message: string, ok: boolean): Response {
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title}</title>
-<style>
-  :root { color-scheme: light dark; }
-  body {
-    margin: 0; min-height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #F6F7F9; color: #0F172A; padding: 24px;
-  }
-  .card {
-    background: #fff; border-radius: 22px; padding: 32px 28px;
-    max-width: 360px; width: 100%; text-align: center;
-    box-shadow: 0 8px 30px rgba(15,23,42,.08);
-  }
-  .mark {
-    width: 56px; height: 56px; border-radius: 999px; margin: 0 auto 20px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px; background: ${ok ? '#D1FAE5' : '#FEE2E2'};
-  }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  p { margin: 0; color: #64748B; font-size: 15px; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #0F172A; color: #F8FAFC; }
-    .card { background: #1E293B; box-shadow: none; }
-    p { color: #94A3B8; }
-  }
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="mark">${ok ? '✓' : '!'}</div>
-    <h1>${title}</h1>
-    <p>${message}</p>
-  </div>
-</body>
-</html>`;
-
-  return new Response(html, {
+  return new Response(`${title}\n\n${message}\n`, {
     status: ok ? 200 : 400,
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      // This page is a one-time result tied to a consumed state. Caching it, at
-      // any layer, would serve a stale outcome to the next person through.
+      'Content-Type': 'text/plain; charset=utf-8',
+      // This response is a one-time result tied to a consumed state. Caching it,
+      // at any layer, would serve a stale outcome to the next person through.
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
       'X-Content-Type-Options': 'nosniff',
