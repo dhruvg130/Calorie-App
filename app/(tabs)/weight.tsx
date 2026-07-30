@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { fromKg, toKg, type WeightEntry } from '@/api/weight';
+import { WeightChart } from '@/components/WeightChart';
 import {
   Banner,
   Button,
@@ -173,6 +174,10 @@ export default function WeightScreen() {
                 </Text>
               )}
             </Card>
+
+            {entriesQuery.data ? (
+              <WeightChart entries={entriesQuery.data} unit={weightUnit} />
+            ) : null}
 
             <Card style={styles.entryCard}>
               <Input
