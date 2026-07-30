@@ -224,6 +224,51 @@ export async function fetchDayTotals(days: Date[]): Promise<DayTotals> {
   return totals;
 }
 
+/** Calories and protein logged per local day, keyed by `YYYY-MM-DD`. */
+export type DayNutrition = Record<string, { calories: number; proteinG: number }>;
+
+/**
+ * Like `fetchDayTotals`, but carrying protein as well.
+ *
+ * Kept separate rather than widened into `fetchDayTotals` because that one
+ * feeds the calendar's rings on every month change and has no use for macros —
+ * there is no reason to pull two extra columns on the hot path to serve the
+ * weekly summary.
+ *
+ * Protein is stored per serving, so it is scaled by the serving multiplier
+ * here, exactly as `useDayTotals` does. Entries whose source reported no
+ * protein contribute nothing rather than zero.
+ */
+export async function fetchDayNutrition(days: Date[]): Promise<DayNutrition> {
+  if (days.length === 0) return {};
+
+  const { from, to } = rangeForDays(days);
+
+  const { data, error } = await supabase
+    .from('food_entries')
+    .select('consumed_at, total_calories, protein_g, serving_quantity')
+    .gte('consumed_at', from)
+    .lt('consumed_at', to);
+
+  if (error) throw error;
+
+  const totals: DayNutrition = {};
+  for (const row of data) {
+    const key = localDayKey(new Date(row.consumed_at));
+    const bucket = totals[key] ?? { calories: 0, proteinG: 0 };
+
+    bucket.calories += toNumber(row.total_calories);
+
+    const perServing = toNullableNumber(row.protein_g);
+    if (perServing !== null) {
+      bucket.proteinG += perServing * toNumber(row.serving_quantity);
+    }
+
+    totals[key] = bucket;
+  }
+  return totals;
+}
+
 /**
  * Distinct foods the user has logged before, most recent first.
  *

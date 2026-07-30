@@ -4,11 +4,13 @@ import { useMemo } from 'react';
 import {
   createEntry,
   deleteEntry,
+  fetchDayNutrition,
   fetchDayTotals,
   fetchEntriesForDay,
   fetchRecentFoods,
   fetchEntry,
   updateEntry,
+  type DayNutrition,
   type DayTotals,
   type FoodEntry,
   type UpdateEntryInput,
@@ -31,6 +33,8 @@ export const entryKeys = {
   // the calendar rings too — no separate bookkeeping to forget.
   totals: (userId: string, fromKey: string, toKey: string) =>
     ['entries', userId, 'totals', fromKey, toKey] as const,
+  nutrition: (userId: string, rangeKey: string) =>
+    ['entries', userId, 'nutrition', rangeKey] as const,
 };
 
 export function useEntriesForDay(userId: string, date: Date = new Date()) {
@@ -71,6 +75,20 @@ export function useEntry(userId: string, id: string) {
 }
 
 /** Totals derived from the day's rows — never stored, so they cannot drift. */
+/** Calories and protein per day, for the weekly summary. */
+export function useDayNutrition(userId: string, days: Date[]) {
+  const key = days.length
+    ? `${localDayKey(days[0]!)}_${localDayKey(days[days.length - 1]!)}`
+    : 'none';
+
+  return useQuery<DayNutrition>({
+    queryKey: entryKeys.nutrition(userId, key),
+    queryFn: () => fetchDayNutrition(days),
+    enabled: days.length > 0,
+    staleTime: 60_000,
+  });
+}
+
 export function useDayTotals(entries: FoodEntry[] | undefined, goal: number) {
   return useMemo(() => {
     const rows = entries ?? [];

@@ -5,13 +5,15 @@ import { earnedCalories, isWhoopConfigured } from '@/api/whoop';
 import { CombinedTrendChart } from '@/components/CombinedTrendChart';
 import { DayStepper } from '@/components/DayStepper';
 import { RecoveryGuidanceCard } from '@/components/RecoveryGuidanceCard';
+import { WeeklySummaryCard } from '@/components/WeeklySummaryCard';
 import { WhoopCard } from '@/components/WhoopCard';
 import { Card, EmptyState, ErrorState, EntryListSkeleton, Screen, Text } from '@/components/ui';
 import { useProfile } from '@/hooks/useProfile';
-import { useDayTotalsForDays } from '@/hooks/useEntries';
+import { useDayNutrition, useDayTotalsForDays } from '@/hooks/useEntries';
 import { useWeightEntries } from '@/hooks/useWeight';
 import { useWhoopConnection, useWhoopDay, useWhoopDays } from '@/hooks/useWhoop';
 import { addDays, formatCompactDay, localDayKey } from '@/lib/date';
+import { weeklySummary } from '@/lib/weeklySummary';
 import { toUserMessage } from '@/lib/errors';
 import { useDaySelection, useSelectedDay } from '@/providers/SelectedDayProvider';
 import { useRequireUser } from '@/providers/AuthProvider';
@@ -52,8 +54,17 @@ export default function WhoopScreen() {
     return Array.from({ length: CHART_DAYS }, (_, i) => addDays(today, -(CHART_DAYS - 1 - i)));
   }, []);
 
+  // The trailing seven days, today included.
+  const week = useMemo(() => chartDays.slice(-7), [chartDays]);
+
   const weightQuery = useWeightEntries(user.id);
   const totalsQuery = useDayTotalsForDays(user.id, chartDays);
+  const nutritionQuery = useDayNutrition(user.id, week);
+
+  const summary = useMemo(
+    () => weeklySummary(week, daysQuery.data, nutritionQuery.data, weightQuery.data, weightUnit),
+    [week, daysQuery.data, nutritionQuery.data, weightQuery.data, weightUnit],
+  );
 
   return (
     <Screen padded={false}>
@@ -125,14 +136,6 @@ export default function WhoopScreen() {
                         />
                       </View>
                     </Card>
-
-                    <CombinedTrendChart
-                      weightEntries={weightQuery.data}
-                      whoopDays={daysQuery.data}
-                      calorieTotals={totalsQuery.data}
-                      unit={weightUnit}
-                      days={CHART_DAYS}
-                    />
                   </>
                 ) : (
                   <EmptyState
@@ -145,6 +148,19 @@ export default function WhoopScreen() {
                     }
                   />
                 )}
+
+                {/* Outside the per-day branch on purpose: the week and the
+                    30-day trend do not stop being interesting because today
+                    has not been scored yet. */}
+                <WeeklySummaryCard summary={summary} unit={weightUnit} />
+
+                <CombinedTrendChart
+                  weightEntries={weightQuery.data}
+                  whoopDays={daysQuery.data}
+                  calorieTotals={totalsQuery.data}
+                  unit={weightUnit}
+                  days={CHART_DAYS}
+                />
               </>
             ) : null}
           </>

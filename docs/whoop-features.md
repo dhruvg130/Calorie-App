@@ -4,6 +4,9 @@
 
 - **Connect / disconnect / sync** — `WhoopCard`, on the Recovery tab.
 - **Recovery, strain, sleep** for the selected day.
+- **Weekly summary** — seven-day averages plus one observation, on the Recovery tab.
+- **Protein target** scaled by strain, derived from bodyweight (`proteinTarget.ts`).
+- **Strain / calories / weight** stacked trend chart, 30 days.
 - **Recovery-based nutrition** — green/yellow/red drives a suggestion on the Recovery tab.
 - **A dedicated Recovery tab** with per-day strain, sleep, HRV, resting HR and burn.
 - **Burned calories** as a line on the Home summary, shown but never added to the
@@ -40,7 +43,7 @@ generalised rather than duplicated.
 
 Needs ~2 weeks before the shape means anything.
 
-### 4. Weekly summary
+### 3. Weekly summary — BUILT
 
 Sunday roundup: average strain, calories, protein, recovery, weight change, plus
 a sentence naming the most obvious pattern.
