@@ -112,6 +112,53 @@ export type Database = {
         };
         Relationships: [];
       };
+
+      // WHOOP.
+      //
+      // `whoop_tokens` is deliberately absent. The client has no grant on it and
+      // no RLS policy permits a row, so declaring it here would only advertise a
+      // table that every query against would fail on.
+      //
+      // Both tables below are read-only to the client: the Edge Function owns
+      // every write. `Insert` and `Update` are typed as impossible so that a
+      // future `.insert()` here fails at compile time rather than at runtime
+      // against a grant.
+      whoop_connections: {
+        Row: {
+          user_id: string;
+          scope: string | null;
+          connected_at: string;
+          last_synced_at: string | null;
+          needs_reauth: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+
+      whoop_daily: {
+        Row: {
+          id: string;
+          user_id: string;
+          day: string;
+          workout_kcal: number | null;
+          cycle_kcal: number | null;
+          strain: number | null;
+          recovery_score: number | null;
+          resting_hr: number | null;
+          hrv_ms: number | null;
+          sleep_performance: number | null;
+          sleep_duration_min: number | null;
+          synced_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

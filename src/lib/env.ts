@@ -15,6 +15,7 @@ import { z } from 'zod';
 const rawEnv = {
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  whoopClientId: process.env.EXPO_PUBLIC_WHOOP_CLIENT_ID,
 };
 
 const envSchema = z.object({
@@ -37,6 +38,16 @@ const envSchema = z.object({
   supabaseAnonKey: z
     .string('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
     .min(20, 'EXPO_PUBLIC_SUPABASE_ANON_KEY is too short to be a valid key'),
+
+  /**
+   * Optional on purpose: WHOOP is an add-on, and a build without it must still
+   * start. Absent simply means the connect button is not offered — not a
+   * configuration error, which is why this does not join `envErrors`.
+   *
+   * Not a secret. It travels in the authorization URL every user is sent to.
+   * The matching client secret exists only as an Edge Function secret.
+   */
+  whoopClientId: z.string().min(1).optional().catch(undefined),
 });
 
 const parsed = envSchema.safeParse(rawEnv);
@@ -58,4 +69,8 @@ export const isEnvConfigured = parsed.success;
  */
 export const env = parsed.success
   ? parsed.data
-  : { supabaseUrl: 'https://unconfigured.invalid', supabaseAnonKey: 'unconfigured' };
+  : {
+      supabaseUrl: 'https://unconfigured.invalid',
+      supabaseAnonKey: 'unconfigured',
+      whoopClientId: undefined,
+    };

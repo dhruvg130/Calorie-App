@@ -14,6 +14,13 @@ type CalorieSummaryCardProps = {
   isOver: boolean;
   macros: Macros;
   onEditGoal: () => void;
+  /**
+   * Calories burned in training, from WHOOP. Shown as its own line and
+   * deliberately NOT added to `goal` or `remaining`: wearable burn estimates run
+   * high, and silently raising the target would eat the deficit the goal exists
+   * to create. The number is here to be looked at, not to move the maths.
+   */
+  earned?: number;
 };
 
 const formatNumber = (value: number) => value.toLocaleString();
@@ -26,6 +33,7 @@ export function CalorieSummaryCard({
   isOver,
   macros,
   onEditGoal,
+  earned = 0,
 }: CalorieSummaryCardProps) {
   // Sources report macros inconsistently, so a day can have calories but no
   // macro data. Showing three zeroes would look like a bug; hide the row.
@@ -69,6 +77,12 @@ export function CalorieSummaryCard({
         <Stat label="Eaten" value={formatNumber(consumed)} />
         <View style={styles.divider} />
         <Stat label="Goal" value={formatNumber(goal)} />
+        {earned > 0 ? (
+          <>
+            <View style={styles.divider} />
+            <Stat label="Burned" value={formatNumber(Math.round(earned))} />
+          </>
+        ) : null}
       </View>
 
       {hasMacros ? (

@@ -24,6 +24,9 @@ import { formatRelativeDay, isToday } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { useDayTotals, useDayTotalsForDays, useEntriesForDay } from '@/hooks/useEntries';
 import { useProfile, useUpdateDailyGoal } from '@/hooks/useProfile';
+import { useWhoopDay, useWhoopDays } from '@/hooks/useWhoop';
+import { earnedCalories } from '@/api/whoop';
+import { localDayKey } from '@/lib/date';
 import { useAuth, useRequireUser } from '@/providers/AuthProvider';
 import { useSelectedDay } from '@/providers/SelectedDayProvider';
 import { colors, spacing } from '@/theme';
@@ -46,6 +49,9 @@ export default function HomeScreen() {
   const updateGoal = useUpdateDailyGoal(user.id);
 
   const totals = useDayTotals(entriesQuery.data, dailyGoal);
+
+  const whoopQuery = useWhoopDays(user.id);
+  const whoopDay = useWhoopDay(whoopQuery.data, localDayKey(selectedDate));
 
   /**
    * Meal sections flattened into one list, so the existing FlatList keeps its
@@ -191,6 +197,7 @@ export default function HomeScreen() {
               isOver={totals.isOver}
               macros={totals.macros}
               onEditGoal={() => setGoalSheetOpen(true)}
+              earned={earnedCalories(whoopDay)}
             />
 
             <Text variant="overline" color="secondary" style={styles.sectionLabel}>

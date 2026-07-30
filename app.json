@@ -48,7 +48,8 @@
           "photosPermission": "Calorie Tracker needs access to your photos so you can attach a picture of your meal.",
           "cameraPermission": "Calorie Tracker uses the camera to photograph your meals."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
