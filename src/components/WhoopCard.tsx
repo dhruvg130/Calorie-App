@@ -205,7 +205,7 @@ export function WhoopCard({ userId, day, isToday }: WhoopCardProps) {
           accessibilityRole="button"
           accessibilityLabel="Disconnect WHOOP"
         >
-          <Text variant="caption" color="tertiary">
+          <Text variant="captionMedium" color="danger">
             Disconnect
           </Text>
         </Pressable>
