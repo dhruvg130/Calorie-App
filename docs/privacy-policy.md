@@ -3,7 +3,7 @@
 **Last updated:** 30 July 2026
 
 This policy explains what Calorie Tracker ("the app") collects, where it is stored, and what
-control you have over it. Contact: **janedoe@example.com**
+control you have over it. Contact: **dhruvguptadhruv@yahoo.com**
 
 ## What the app collects
 
@@ -65,7 +65,7 @@ meal photos — deletion cascades in the database, so nothing is left orphaned b
 Disconnecting WHOOP stops any further sync and deletes the WHOOP data we have stored for you. You
 can also revoke the app's access from your WHOOP account settings at any time.
 
-To request deletion, or a copy of your data, email **janedoe@example.com**.
+To request deletion, or a copy of your data, email **dhruvguptadhruv@yahoo.com**.
 
 ## Your rights
 
