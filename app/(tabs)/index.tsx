@@ -25,7 +25,10 @@ import { toUserMessage } from '@/lib/errors';
 import { useDayTotals, useDayTotalsForDays, useEntriesForDay } from '@/hooks/useEntries';
 import { useProfile, useUpdateDailyGoal } from '@/hooks/useProfile';
 import { useWhoopDay, useWhoopDays } from '@/hooks/useWhoop';
+import { useWeightEntries, useWeightTrend } from '@/hooks/useWeight';
 import { earnedCalories } from '@/api/whoop';
+import { ProteinCard } from '@/components/ProteinCard';
+import { proteinTarget } from '@/lib/proteinTarget';
 import { localDayKey } from '@/lib/date';
 import { useAuth, useRequireUser } from '@/providers/AuthProvider';
 import { useSelectedDay } from '@/providers/SelectedDayProvider';
@@ -52,6 +55,13 @@ export default function HomeScreen() {
 
   const whoopQuery = useWhoopDays(user.id);
   const whoopDay = useWhoopDay(whoopQuery.data, localDayKey(selectedDate));
+
+  // Protein scales with bodyweight, so the most recent weigh-in is the input —
+  // not the selected day's, which may not exist. `latest` is already the
+  // newest entry, so a gap in weigh-ins does not blank the target.
+  const weightQuery = useWeightEntries(user.id);
+  const weightTrend = useWeightTrend(weightQuery.data);
+  const protein = proteinTarget(weightTrend.latest?.weightKg, whoopDay?.strain);
 
   /**
    * Meal sections flattened into one list, so the existing FlatList keeps its
@@ -199,6 +209,12 @@ export default function HomeScreen() {
               onEditGoal={() => setGoalSheetOpen(true)}
               earned={earnedCalories(whoopDay)}
             />
+
+            {/* Hidden rather than guessed at when no weight has been logged —
+                a target invented without one is not a recommendation. */}
+            {protein ? (
+              <ProteinCard consumed={totals.macros.proteinG} target={protein} />
+            ) : null}
 
             <Text variant="overline" color="secondary" style={styles.sectionLabel}>
               {entriesQuery.data?.length

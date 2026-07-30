@@ -1,17 +1,24 @@
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { earnedCalories, isWhoopConfigured } from '@/api/whoop';
+import { CombinedTrendChart } from '@/components/CombinedTrendChart';
 import { DayStepper } from '@/components/DayStepper';
 import { RecoveryGuidanceCard } from '@/components/RecoveryGuidanceCard';
 import { WhoopCard } from '@/components/WhoopCard';
 import { Card, EmptyState, ErrorState, EntryListSkeleton, Screen, Text } from '@/components/ui';
 import { useProfile } from '@/hooks/useProfile';
+import { useDayTotalsForDays } from '@/hooks/useEntries';
+import { useWeightEntries } from '@/hooks/useWeight';
 import { useWhoopConnection, useWhoopDay, useWhoopDays } from '@/hooks/useWhoop';
-import { formatCompactDay, localDayKey } from '@/lib/date';
+import { addDays, formatCompactDay, localDayKey } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { useDaySelection, useSelectedDay } from '@/providers/SelectedDayProvider';
 import { useRequireUser } from '@/providers/AuthProvider';
 import { spacing } from '@/theme';
+
+/** Long enough for a pattern to show, short enough to stay legible at 320pt. */
+const CHART_DAYS = 30;
 
 /**
  * WHOOP's own screen.
@@ -25,7 +32,7 @@ import { spacing } from '@/theme';
  */
 export default function WhoopScreen() {
   const user = useRequireUser();
-  const { dailyGoal } = useProfile(user.id);
+  const { dailyGoal, weightUnit } = useProfile(user.id);
 
   const { selectedDay: sharedDay } = useSelectedDay();
   const { selectedDay, setSelectedDay, isViewingToday, resetToToday } = useDaySelection(sharedDay);
@@ -37,6 +44,16 @@ export default function WhoopScreen() {
 
   const connected = Boolean(connectionQuery.data) && !connectionQuery.data?.needsReauth;
   const earned = earnedCalories(day);
+
+  // The chart's window. Memoised because `useDayTotalsForDays` keys its query on
+  // these dates — a fresh array every render would refetch on every render.
+  const chartDays = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: CHART_DAYS }, (_, i) => addDays(today, -(CHART_DAYS - 1 - i)));
+  }, []);
+
+  const weightQuery = useWeightEntries(user.id);
+  const totalsQuery = useDayTotalsForDays(user.id, chartDays);
 
   return (
     <Screen padded={false}>
@@ -108,6 +125,14 @@ export default function WhoopScreen() {
                         />
                       </View>
                     </Card>
+
+                    <CombinedTrendChart
+                      weightEntries={weightQuery.data}
+                      whoopDays={daysQuery.data}
+                      calorieTotals={totalsQuery.data}
+                      unit={weightUnit}
+                      days={CHART_DAYS}
+                    />
                   </>
                 ) : (
                   <EmptyState
