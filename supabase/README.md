@@ -125,6 +125,65 @@ automatically — you do not set those yourself.
 
 ---
 
+## 6. WHOOP (optional)
+
+Skip this entirely if you are not connecting WHOOP — the rest of the app works
+without it.
+
+1. Apply [`migrations/0003_whoop.sql`](./migrations/0003_whoop.sql) in the SQL
+   Editor, the same way as the earlier migrations.
+
+2. Register an app at <https://developer.whoop.com>. You need a public privacy
+   policy URL, and a redirect of `calorietracker://whoop-callback`. Request
+   these scopes:
+
+   ```
+   read:workout read:cycles read:recovery read:sleep read:body_measurement offline
+   ```
+
+   `offline` is the one people forget — without it WHOOP issues no refresh
+   token and the connection dies after an hour.
+
+3. Store both credentials as function secrets. The client ID is not secret (it
+   travels in the authorization URL, and the app has its own copy in
+   `EXPO_PUBLIC_WHOOP_CLIENT_ID`), but the function needs its own:
+
+   ```bash
+   npx supabase secrets set WHOOP_CLIENT_ID=your-client-id
+   ```
+
+   ```bash
+   npx supabase secrets set WHOOP_CLIENT_SECRET=your-client-secret
+   ```
+
+4. Deploy:
+
+   ```bash
+   npx supabase functions deploy whoop
+   ```
+
+### Why the tokens are not in the app
+
+WHOOP does not support PKCE, so both the code exchange and every later refresh
+require the client secret — which cannot live in a bundle. The WHOOP access
+token stays server-side too: it is a bearer credential for the user's health
+data, usable directly against WHOOP with no Supabase involvement at all.
+
+`whoop_tokens` therefore has RLS enabled with **no policies** and its grants
+revoked, so no end-user role can read a row by any route. Only the Edge
+Function, using the service role, can. Verify with:
+
+```sql
+select count(*) as policy_count
+from pg_policies
+where schemaname = 'public' and tablename = 'whoop_tokens';
+```
+
+`policy_count` must be `0`. If it is not, something has granted access to
+credentials that should be unreachable.
+
+---
+
 ## Storage
 
 `0001_init.sql` already creates the `meal-images` bucket as **private**, capped
