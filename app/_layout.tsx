@@ -55,9 +55,10 @@ export default function RootLayout() {
  * How long the splash is held even when there is nothing left to wait for.
  *
  * The animation's full sequence — ring sweep, mark, wordmark — lands at about
- * 900ms. Without a floor, a warm start resolves the session in a fraction of
+ * 1500ms. Without a floor, a warm start resolves the session in a fraction of
  * that and unmounts the splash mid-sweep, which reads as a flicker rather than
- * an intro.
+ * an intro. Keep this above the sweep duration in SplashGate, or the ring gets
+ * cut off before it closes.
  *
  * This is a real cost: every launch is now at least this long, whether or not
  * anything is loading. That is the trade for the animation being seen at all.
@@ -65,7 +66,7 @@ export default function RootLayout() {
  */
 // Annotated as `number` rather than left to infer the literal `1300`, so the
 // `=== 0` checks below stay legal when someone edits this to disable the hold.
-const MINIMUM_SPLASH_MS: number = 1300;
+const MINIMUM_SPLASH_MS: number = 1900;
 
 function RootNavigator() {
   const { session, initializing } = useAuth();

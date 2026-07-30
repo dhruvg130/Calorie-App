@@ -51,31 +51,33 @@ export function SplashGate() {
 
   useEffect(() => {
     sweep.value = withTiming(0, {
-      duration: 900,
+      duration: 1500,
       // Fast out of the gate, easing into the close — a linear sweep reads
-      // mechanical, like a progress bar rather than a flourish.
+      // mechanical, like a progress bar rather than a flourish. Over a longer
+      // duration the ease-out matters more, not less: the last third of the
+      // ring closing slowly is the part that reads as deliberate.
       easing: Easing.out(Easing.cubic),
     });
 
-    markOpacity.value = withDelay(120, withTiming(1, { duration: 400 }));
+    markOpacity.value = withDelay(200, withTiming(1, { duration: 520 }));
     markScale.value = withDelay(
-      120,
+      200,
       withSequence(
         // Slight overshoot, then settle: the difference between "appeared" and
         // "arrived".
-        withTiming(1.08, { duration: 320, easing: Easing.out(Easing.quad) }),
-        withTiming(1, { duration: 180, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1.08, { duration: 460, easing: Easing.out(Easing.quad) }),
+        withTiming(1, { duration: 260, easing: Easing.inOut(Easing.quad) }),
       ),
     );
 
-    wordmark.value = withDelay(380, withTiming(1, { duration: 420 }));
+    wordmark.value = withDelay(700, withTiming(1, { duration: 560 }));
 
     // Only ever seen if the session read is slow. Starts after the sweep would
     // have finished, so a fast start never shows a half-formed pulse.
     breathe.value = withDelay(
-      1000,
+      1700,
       withRepeat(
-        withTiming(1.04, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.04, { duration: 1300, easing: Easing.inOut(Easing.ease) }),
         -1,
         true,
       ),
