@@ -67,7 +67,9 @@ export default function ConfirmScreen() {
         caloriesPerServing: values.caloriesPerServing,
         servingQuantity: values.servingQuantity,
         servingUnit: values.servingUnit,
-        proteinG: item.proteinG,
+        // From the form, not the lookup: the field is seeded with whatever the
+        // source reported and the user may have corrected it.
+        proteinG: values.proteinG,
         carbsG: item.carbsG,
         fatG: item.fatG,
         source: item.source,
@@ -126,10 +128,10 @@ export default function ConfirmScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    // Just enough to clear the navigation header. The screen's headline is
-    // that header's title, so a full step of space below it read as a gap
-    // rather than as separation.
-    paddingTop: spacing.xs,
+    // Flush to the navigation header. The screen's headline is that header's
+    // title, so any space below it read as a gap rather than as separation —
+    // the total card can sit straight under it.
+    paddingTop: 0,
     gap: spacing.lg,
   },
 });

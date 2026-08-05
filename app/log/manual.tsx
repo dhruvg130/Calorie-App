@@ -34,10 +34,10 @@ export default function ManualEntryScreen() {
         caloriesPerServing: values.caloriesPerServing,
         servingQuantity: values.servingQuantity,
         servingUnit: values.servingUnit,
-        // Hand-entered food has no macro data unless the user knows it; leaving
-        // these null is honest, and the summary hides the macro row when a day
-        // has none rather than showing three misleading zeroes.
-        proteinG: null,
+        // Protein is offered on the form; carbs and fat are not, and guessing
+        // them would be worse than leaving them unknown. The summary hides the
+        // macro row when a day has none rather than showing misleading zeroes.
+        proteinG: values.proteinG,
         carbsG: null,
         fatG: null,
         source: 'manual',

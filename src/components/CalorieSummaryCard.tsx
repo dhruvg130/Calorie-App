@@ -78,7 +78,7 @@ export function CalorieSummaryCard({
       />
 
       <View style={styles.statsRow}>
-        <Stat label="Eaten" value={formatNumber(consumed)} />
+        <Stat label="Calories Eaten" value={formatNumber(consumed)} />
         <View style={styles.divider} />
         <Stat label="Goal" value={formatNumber(goal)} />
         {earned > 0 ? (
@@ -118,7 +118,10 @@ function Stat({ label, value }: { label: string; value: string }) {
 
   return (
     <View style={styles.stat}>
-      <Text variant="caption" color="tertiary">
+      {/* One line: "Calories Eaten" is wide enough to wrap in a third of the
+          card, and a wrapped label would push its number out of line with the
+          two beside it. */}
+      <Text variant="caption" color="tertiary" numberOfLines={1}>
         {label}
       </Text>
       <Text variant="subheading">{value}</Text>
@@ -178,6 +181,8 @@ const useStyles = makeStyles((colors) => ({
     width: 1,
     height: 32,
     backgroundColor: colors.border,
-    marginHorizontal: spacing.lg,
+    // Tighter than the surrounding rhythm to buy back width for the longer
+    // "Calories Eaten" label.
+    marginHorizontal: spacing.md,
   },
 }));

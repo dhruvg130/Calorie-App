@@ -157,6 +157,8 @@ export type UpdateEntryInput = {
   caloriesPerServing: number;
   servingQuantity: number;
   servingUnit: string;
+  /** Omit to leave the stored value alone; null clears it to "unknown". */
+  proteinG?: number | null;
   mealType?: MealType | null;
 };
 
@@ -173,6 +175,9 @@ export async function updateEntry(id: string, input: UpdateEntryInput): Promise<
       calories_per_serving: validated.caloriesPerServing,
       serving_quantity: validated.servingQuantity,
       serving_unit: validated.servingUnit,
+      // Absent rather than null when the caller did not supply it, so an edit
+      // path that does not offer the field cannot wipe a stored macro.
+      ...(input.proteinG === undefined ? {} : { protein_g: validated.proteinG }),
       ...(input.mealType === undefined ? {} : { meal_type: input.mealType }),
     })
     .eq('id', id)

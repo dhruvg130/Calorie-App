@@ -19,6 +19,12 @@ export type ServingFormValues = {
   caloriesPerServing: number;
   servingQuantity: number;
   servingUnit: string;
+  /**
+   * Grams per serving, or null when left blank. Null is not zero: it means the
+   * protein is unknown, which is why a day with no macro data hides the macro
+   * row rather than showing three convincing zeroes.
+   */
+  proteinG: number | null;
   /** Null when the user clears the suggestion — grouping is optional. */
   mealType: MealType | null;
 };
@@ -28,14 +34,10 @@ type ServingFormProps = {
    * `mealType` is optional here: the form suggests one from the time of day,
    * so callers creating a new entry do not have to pick a starting value.
    */
-  initial: Omit<ServingFormValues, 'mealType'> & {
+  initial: Omit<ServingFormValues, 'mealType' | 'proteinG'> & {
     brand?: string | null;
     mealType?: MealType | null;
-    /**
-     * Protein per serving, when the source reported it. Read-only here — it is
-     * shown scaled by the serving count so the total reflects what will be
-     * logged, but this form does not edit macros.
-     */
+    /** Protein per serving, when the source reported one. Editable. */
     proteinG?: number | null;
   };
   submitLabel: string;
@@ -94,6 +96,11 @@ export function ServingForm({
   const [calories, setCalories] = useState(String(initial.caloriesPerServing));
   const [quantity, setQuantity] = useState(String(initial.servingQuantity));
   const [unit, setUnit] = useState(initial.servingUnit);
+  // Blank rather than "0" when the source reported nothing, so an untouched
+  // field saves as "unknown" instead of as a measured zero.
+  const [protein, setProtein] = useState(
+    typeof initial.proteinG === 'number' ? String(initial.proteinG) : '',
+  );
   // Seeded from the time of day so the common case needs no interaction; the
   // picker is still there when the guess is wrong.
   const [mealType, setMealType] = useState<MealType | null>(
@@ -103,6 +110,7 @@ export function ServingForm({
 
   const parsedCalories = parseNumericInput(calories);
   const parsedQuantity = parseNumericInput(quantity);
+  const parsedProtein = parseNumericInput(protein);
 
   // Recomputed on every keystroke so the number the user sees is the number
   // that will be saved — the database computes the same product.
@@ -114,10 +122,9 @@ export function ServingForm({
   // Protein is stored per serving and scaled by the multiplier everywhere else
   // in the app, so it is scaled the same way here.
   const totalProtein = useMemo(() => {
-    const perServing = initial.proteinG;
-    if (typeof perServing !== 'number' || parsedQuantity === null) return null;
-    return Math.round(perServing * parsedQuantity);
-  }, [initial.proteinG, parsedQuantity]);
+    if (parsedProtein === null || parsedQuantity === null) return null;
+    return Math.round(parsedProtein * parsedQuantity);
+  }, [parsedProtein, parsedQuantity]);
 
   const wholeItem = isWholeItem(unit);
   const step = wholeItem ? 1 : 0.5;
@@ -152,11 +159,20 @@ export function ServingForm({
   const handleSubmit = () => {
     if (submitting) return;
 
+    // Blank protein is legitimate — it means "unknown". Text that is not a
+    // number is not, and must not be quietly stored as unknown either.
+    const proteinText = protein.trim();
+    if (proteinText !== '' && parsedProtein === null) {
+      setErrors({ proteinG: 'Enter a number, or leave it blank' });
+      return;
+    }
+
     const candidate = {
       name,
       caloriesPerServing: parsedCalories ?? Number.NaN,
       servingQuantity: parsedQuantity ?? Number.NaN,
       servingUnit: unit,
+      proteinG: proteinText === '' ? null : parsedProtein,
       source: 'manual' as const,
     };
 
@@ -167,6 +183,7 @@ export function ServingForm({
         caloriesPerServing: firstIssue(parsed.error, 'caloriesPerServing'),
         servingQuantity: firstIssue(parsed.error, 'servingQuantity'),
         servingUnit: firstIssue(parsed.error, 'servingUnit'),
+        proteinG: firstIssue(parsed.error, 'proteinG'),
       });
       return;
     }
@@ -177,6 +194,7 @@ export function ServingForm({
       caloriesPerServing: parsed.data.caloriesPerServing,
       servingQuantity: parsed.data.servingQuantity,
       servingUnit: parsed.data.servingUnit,
+      proteinG: parsed.data.proteinG,
       mealType,
     });
   };
@@ -314,16 +332,36 @@ export function ServingForm({
         />
       </View>
 
-      <Input
-        label="Calories per serving"
-        value={calories}
-        onChangeText={setCalories}
-        error={errors.caloriesPerServing}
-        keyboardType="decimal-pad"
-        editable={!submitting}
-        maxLength={7}
-        right={<Ionicons name="flame-outline" size={18} color={colors.textTertiary} />}
-      />
+      <View style={styles.perServingSection}>
+        <Text variant="captionMedium" color="secondary" style={styles.quantityLabel}>
+          Per serving
+        </Text>
+
+        <View style={styles.pairRow}>
+          <Input
+            containerStyle={styles.pairItem}
+            label="Calories"
+            value={calories}
+            onChangeText={setCalories}
+            error={errors.caloriesPerServing}
+            keyboardType="decimal-pad"
+            editable={!submitting}
+            maxLength={7}
+            right={<Ionicons name="flame-outline" size={18} color={colors.textTertiary} />}
+          />
+          <Input
+            containerStyle={styles.pairItem}
+            label="Protein (g)"
+            value={protein}
+            onChangeText={setProtein}
+            error={errors.proteinG}
+            keyboardType="decimal-pad"
+            editable={!submitting}
+            maxLength={5}
+            placeholder="Optional"
+          />
+        </View>
+      </View>
 
       <MealTypePicker value={mealType} onChange={setMealType} />
 
@@ -406,6 +444,16 @@ const useStyles = makeStyles((colors) => ({
     lineHeight: typography.heading.lineHeight,
     fontWeight: '700',
     paddingVertical: 0,
+  },
+  perServingSection: {
+    gap: spacing.sm,
+  },
+  pairRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  pairItem: {
+    flex: 1,
   },
   chipRow: {
     flexDirection: 'row',
