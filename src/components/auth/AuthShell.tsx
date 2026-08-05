@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Screen, Text } from '@/components/ui';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 type AuthShellProps = {
   title: string;
@@ -15,6 +16,9 @@ type AuthShellProps = {
 /** Shared chrome for sign-in and sign-up so the two screens stay identical in
  *  layout and only differ where the behaviour genuinely differs. */
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
+  const colors = useColors();
+  const styles = useStyles();
+
   return (
     <Screen scroll avoidKeyboard contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -34,7 +38,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   content: {
     justifyContent: 'center',
   },
@@ -62,4 +66,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     alignItems: 'center',
   },
-});
+}));

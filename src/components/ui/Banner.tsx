@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing, type Palette } from '@/theme';
 
 import { Text } from './Text';
 
 type Tone = 'danger' | 'success' | 'info';
 
-const TONE_STYLES: Record<
-  Tone,
-  { background: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }
-> = {
+const toneStyles = (
+  colors: Palette,
+): Record<Tone, { background: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> => ({
   danger: {
     background: colors.dangerLight,
     icon: 'alert-circle',
@@ -26,7 +26,7 @@ const TONE_STYLES: Record<
     icon: 'information-circle',
     iconColor: colors.warning,
   },
-};
+});
 
 type BannerProps = {
   /** Must already be user-safe text — pass the output of `toUserMessage`. */
@@ -35,7 +35,9 @@ type BannerProps = {
 };
 
 export function Banner({ message, tone = 'danger' }: BannerProps) {
-  const { background, icon, iconColor } = TONE_STYLES[tone];
+  const colors = useColors();
+  const styles = useStyles();
+  const { background, icon, iconColor } = toneStyles(colors)[tone];
 
   return (
     <View
@@ -53,7 +55,7 @@ export function Banner({ message, tone = 'danger' }: BannerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -67,4 +69,4 @@ const styles = StyleSheet.create({
   message: {
     flex: 1,
   },
-});
+}));

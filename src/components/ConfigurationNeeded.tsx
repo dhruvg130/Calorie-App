@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Card, Screen, Text } from '@/components/ui';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 /**
  * Shown instead of the app when Supabase environment variables are missing or
@@ -10,6 +11,9 @@ import { colors, radius, spacing } from '@/theme';
  * or a crash on the first network call.
  */
 export function ConfigurationNeeded({ problems }: { problems: string[] }) {
+  const colors = useColors();
+  const styles = useStyles();
+
   return (
     <Screen scroll>
       <View style={styles.header}>
@@ -56,6 +60,8 @@ export function ConfigurationNeeded({ problems }: { problems: string[] }) {
 }
 
 function Step({ index, text }: { index: number; text: string }) {
+  const styles = useStyles();
+
   return (
     <View style={styles.stepRow}>
       <View style={styles.stepBadge}>
@@ -70,7 +76,7 @@ function Step({ index, text }: { index: number; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   header: {
     paddingTop: spacing.xxl,
     paddingBottom: spacing.xl,
@@ -122,4 +128,4 @@ const styles = StyleSheet.create({
   stepText: {
     flex: 1,
   },
-});
+}));

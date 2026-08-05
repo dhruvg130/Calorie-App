@@ -1,9 +1,9 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Card, Text } from '@/components/ui';
 import type { WeeklyMetric, WeeklySummary } from '@/lib/weeklySummary';
 import type { WeightUnit } from '@/lib/database.types';
-import { colors, spacing } from '@/theme';
+import { makeStyles, spacing } from '@/theme';
 
 type WeeklySummaryCardProps = {
   summary: WeeklySummary;
@@ -19,6 +19,7 @@ type WeeklySummaryCardProps = {
  * buried in a tooltip nobody opens.
  */
 export function WeeklySummaryCard({ summary, unit }: WeeklySummaryCardProps) {
+  const styles = useStyles();
   const { strain, calories, protein, recovery, weightChange, observation } = summary;
 
   const hasAnything =
@@ -92,6 +93,8 @@ function Metric({
   metric: WeeklyMetric;
   format: (value: number) => string;
 }) {
+  const styles = useStyles();
+
   return (
     <View style={styles.metric}>
       <Text variant="caption" color="tertiary">
@@ -107,7 +110,7 @@ function Metric({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   card: {
     gap: spacing.md,
   },
@@ -125,4 +128,4 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: spacing.md,
   },
-});
+}));

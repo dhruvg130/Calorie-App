@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Card, ProgressBar, Text } from '@/components/ui';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 export type Macros = { proteinG: number; carbsG: number; fatG: number };
 
@@ -35,6 +36,9 @@ export function CalorieSummaryCard({
   onEditGoal,
   earned = 0,
 }: CalorieSummaryCardProps) {
+  const colors = useColors();
+  const styles = useStyles();
+
   // Sources report macros inconsistently, so a day can have calories but no
   // macro data. Showing three zeroes would look like a bug; hide the row.
   const hasMacros = macros.proteinG > 0 || macros.carbsG > 0 || macros.fatG > 0;
@@ -97,6 +101,8 @@ export function CalorieSummaryCard({
 }
 
 function Macro({ label, grams }: { label: string; grams: number }) {
+  const styles = useStyles();
+
   return (
     <View style={styles.macro}>
       <Text variant="caption" color="tertiary">
@@ -108,6 +114,8 @@ function Macro({ label, grams }: { label: string; grams: number }) {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
+
   return (
     <View style={styles.stat}>
       <Text variant="caption" color="tertiary">
@@ -118,7 +126,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   card: {
     gap: spacing.lg,
   },
@@ -172,4 +180,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginHorizontal: spacing.lg,
   },
-});
+}));

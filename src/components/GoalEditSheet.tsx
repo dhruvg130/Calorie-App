@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Banner, Button, Input, Text } from '@/components/ui';
 import { toUserMessage } from '@/lib/errors';
 import { LIMITS, dailyGoalSchema, parseNumericInput } from '@/lib/validation';
-import { absoluteFill, colors, radius, spacing } from '@/theme';
+import { absoluteFill, makeStyles, radius, spacing } from '@/theme';
 
 type GoalEditSheetProps = {
   visible: boolean;
@@ -23,6 +23,7 @@ export function GoalEditSheet({
   onSave,
 }: GoalEditSheetProps) {
   const insets = useSafeAreaInsets();
+  const styles = useStyles();
   const [value, setValue] = useState(String(currentGoal));
   const [error, setError] = useState<string | null>(null);
 
@@ -119,7 +120,7 @@ export function GoalEditSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   scrim: {
     ...absoluteFill,
     backgroundColor: colors.overlay,
@@ -155,4 +156,4 @@ const styles = StyleSheet.create({
   action: {
     flex: 1,
   },
-});
+}));

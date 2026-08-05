@@ -8,8 +8,16 @@ import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { Banner, Button, EmptyState, Screen, Text } from '@/components/ui';
 import { toUserMessage } from '@/lib/errors';
 import { barcodeLookup } from '@/services/nutrition';
+import { useColors } from '@/providers/ThemeProvider';
 import { encodeHandoff } from '@/services/nutrition/handoff';
-import { absoluteFill, colors, radius, spacing } from '@/theme';
+import { absoluteFill, makeStyles, radius, spacing } from '@/theme';
+
+/**
+ * The status pill sits on a fixed dark scrim over the camera feed, so its
+ * contents stay light in both themes — `textInverse` would flip to dark and
+ * disappear.
+ */
+const ON_SCRIM = '#FFFFFF';
 
 /** Product barcodes only — QR and friends would just waste lookups. */
 const BARCODE_TYPES = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'itf14'] as const;
@@ -30,6 +38,8 @@ function webCameraUnavailable(): boolean {
 }
 
 export default function ScanScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -172,8 +182,8 @@ export default function ScanScreen() {
 
         {looking ? (
           <View style={styles.statusPill}>
-            <ActivityIndicator size="small" color={colors.textInverse} />
-            <Text variant="captionMedium" color="inverse">
+            <ActivityIndicator size="small" color={ON_SCRIM} />
+            <Text variant="captionMedium" style={styles.statusLabel}>
               Looking it up…
             </Text>
           </View>
@@ -196,7 +206,7 @@ export default function ScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -232,6 +242,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderRadius: radius.full,
   },
+  statusLabel: {
+    color: ON_SCRIM,
+  },
   footer: {
     padding: spacing.lg,
     gap: spacing.md,
@@ -249,4 +262,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignSelf: 'stretch',
   },
-});
+}));

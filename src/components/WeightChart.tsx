@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle, Path, Line as SvgLine } from 'react-native-svg';
 
 import { fromKg, type WeightEntry } from '@/api/weight';
 import { Text } from '@/components/ui';
 import type { WeightUnit } from '@/lib/database.types';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 type WeightChartProps = {
   /** Newest-first, as the API returns them. */
@@ -25,6 +26,9 @@ const PADDING = { top: 12, right: 8, bottom: 20, left: 8 };
  * slope a lie.
  */
 export function WeightChart({ entries, unit, height = 160 }: WeightChartProps) {
+  const colors = useColors();
+  const styles = useStyles();
+
   // Chronological for drawing; the list elsewhere stays newest-first.
   const points = useMemo(
     () => [...entries].reverse().map((e) => ({
@@ -119,7 +123,7 @@ export function WeightChart({ entries, unit, height = 160 }: WeightChartProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -136,4 +140,4 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xs,
   },
-});
+}));

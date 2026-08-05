@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
 import { fromKg, toKg, type WeightEntry } from '@/api/weight';
 import { DayStepper } from '@/components/DayStepper';
@@ -25,9 +25,12 @@ import { parseNumericInput } from '@/lib/validation';
 import { useRequireUser } from '@/providers/AuthProvider';
 import { useDaySelection, useSelectedDay } from '@/providers/SelectedDayProvider';
 import type { WeightUnit } from '@/lib/database.types';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 export default function WeightScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const user = useRequireUser();
   const { weightUnit, isLoading: profileLoading } = useProfile(user.id);
   const updateUnit = useUpdateWeightUnit(user.id);
@@ -298,7 +301,7 @@ export default function WeightScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   content: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
@@ -369,4 +372,4 @@ const styles = StyleSheet.create({
   padded: {
     paddingTop: spacing.lg,
   },
-});
+}));

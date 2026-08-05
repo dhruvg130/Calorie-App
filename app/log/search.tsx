@@ -2,19 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
 import { FoodResultRow } from '@/components/FoodResultRow';
 import { EmptyState, EntryListSkeleton, ErrorState, Input, Screen, Text } from '@/components/ui';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toUserMessage } from '@/lib/errors';
 import { nutritionSearch, type NutritionItem } from '@/services/nutrition';
+import { useColors } from '@/providers/ThemeProvider';
 import { encodeHandoff } from '@/services/nutrition/handoff';
-import { colors, spacing } from '@/theme';
+import { makeStyles, spacing } from '@/theme';
 
 const MIN_QUERY_LENGTH = 2;
 
 export default function SearchScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query.trim());
@@ -108,7 +111,7 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   searchBar: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
@@ -125,4 +128,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
   },
-});
+}));

@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
-  StyleSheet,
   View,
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing, typography, type Palette } from '@/theme';
 
 import { Text } from './Text';
 
@@ -28,12 +28,12 @@ type ButtonProps = {
   accessibilityHint?: string;
 };
 
-const BACKGROUNDS: Record<Variant, string> = {
+const backgroundFor = (colors: Palette): Record<Variant, string> => ({
   primary: colors.primary,
   secondary: colors.surfaceMuted,
   ghost: 'transparent',
   danger: colors.dangerLight,
-};
+});
 
 const LABEL_COLORS: Record<Variant, 'inverse' | 'default' | 'primary' | 'danger'> = {
   primary: 'inverse',
@@ -54,6 +54,8 @@ export function Button({
   style,
   accessibilityHint,
 }: ButtonProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const inactive = disabled || loading;
 
   const handlePress = () => {
@@ -75,7 +77,7 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         size === 'md' ? styles.md : styles.lg,
-        { backgroundColor: BACKGROUNDS[variant] },
+        { backgroundColor: backgroundFor(colors)[variant] },
         variant === 'ghost' && styles.ghost,
         fullWidth && styles.fullWidth,
         pressed && !inactive && styles.pressed,
@@ -104,7 +106,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   base: {
     borderRadius: radius.lg,
     alignItems: 'center',
@@ -141,4 +143,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
-});
+}));

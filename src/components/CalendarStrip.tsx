@@ -17,7 +17,8 @@ import {
   startOfMonth,
   weekDays,
 } from '@/lib/date';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { radius, spacing } from '@/theme';
 
 // Old Android needs this opt-in for LayoutAnimation to do anything at all.
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -50,6 +51,7 @@ export function CalendarStrip({
   dailyGoal,
   onVisibleDaysChange,
 }: CalendarStripProps) {
+  const colors = useColors();
   const [expanded, setExpanded] = useState(false);
   // The period being *browsed*, which is not the selection: you can page to
   // last month and look around without changing which day is loaded below.

@@ -1,13 +1,13 @@
 import { forwardRef, useState } from 'react';
 import {
-  StyleSheet,
   TextInput,
   View,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing, typography } from '@/theme';
 
 import { Text } from './Text';
 
@@ -23,6 +23,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   { label, error, hint, containerStyle, right, style, onFocus, onBlur, ...rest },
   ref,
 ) {
+  const colors = useColors();
+  const styles = useStyles();
   const [focused, setFocused] = useState(false);
 
   return (
@@ -75,7 +77,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     gap: spacing.xs,
   },
@@ -111,4 +113,4 @@ const styles = StyleSheet.create({
   message: {
     marginLeft: spacing.xs,
   },
-});
+}));

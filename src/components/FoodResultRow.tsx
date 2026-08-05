@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
+import { useColors } from '@/providers/ThemeProvider';
 import type { NutritionItem } from '@/services/nutrition';
-import { colors, radius, shadows, spacing } from '@/theme';
+import { makeStyles, radius, shadows, spacing } from '@/theme';
 
 type FoodResultRowProps = {
   item: NutritionItem;
@@ -11,6 +12,9 @@ type FoodResultRowProps = {
 };
 
 export function FoodResultRow({ item, onPress }: FoodResultRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
+
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -36,7 +40,7 @@ export function FoodResultRow({ item, onPress }: FoodResultRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -57,4 +61,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
-});
+}));

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,7 +7,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-import { colors, radius } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius } from '@/theme';
 
 type ProgressBarProps = {
   /** Fraction of the goal consumed. Values above 1 clamp the bar but recolour it. */
@@ -20,9 +21,11 @@ type ProgressBarProps = {
 export function ProgressBar({
   progress,
   height = 12,
-  trackColor = colors.surfaceMuted,
+  trackColor,
   accessibilityLabel,
 }: ProgressBarProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const clamped = Number.isFinite(progress) ? Math.min(Math.max(progress, 0), 1) : 0;
   const isOver = progress > 1;
 
@@ -41,7 +44,10 @@ export function ProgressBar({
 
   return (
     <View
-      style={[styles.track, { height, borderRadius: height / 2, backgroundColor: trackColor }]}
+      style={[
+        styles.track,
+        { height, borderRadius: height / 2, backgroundColor: trackColor ?? colors.surfaceMuted },
+      ]}
       accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
@@ -61,7 +67,7 @@ export function ProgressBar({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   track: {
     width: '100%',
     overflow: 'hidden',
@@ -72,4 +78,4 @@ const styles = StyleSheet.create({
     // bar reads as "started" rather than "empty".
     minWidth: 4,
   },
-});
+}));

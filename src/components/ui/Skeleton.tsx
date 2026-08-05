@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,7 +8,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 type SkeletonProps = {
   width?: number | `${number}%`;
@@ -18,6 +19,7 @@ type SkeletonProps = {
 
 /** Pulsing placeholder used while a query is loading. */
 export function Skeleton({ width = '100%', height = 16, style }: SkeletonProps) {
+  const colors = useColors();
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
@@ -43,6 +45,8 @@ export function Skeleton({ width = '100%', height = 16, style }: SkeletonProps) 
 
 /** Matches the shape of `FoodEntryRow` so the list does not jump on load. */
 export function EntryListSkeleton({ rows = 3 }: { rows?: number }) {
+  const styles = useStyles();
+
   return (
     <View style={styles.list}>
       {Array.from({ length: rows }, (_, index) => (
@@ -59,7 +63,7 @@ export function EntryListSkeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   list: {
     gap: spacing.sm,
   },
@@ -78,4 +82,4 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.sm,
   },
-});
+}));

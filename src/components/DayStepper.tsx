@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { addDays, formatCompactDay, isFutureDay, isToday } from '@/lib/date';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 type DayStepperProps = {
   date: Date;
@@ -20,6 +21,8 @@ type DayStepperProps = {
  * far-back day is what the tappable history rows are for.
  */
 export function DayStepper({ date, onChange, onToday }: DayStepperProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const viewingToday = isToday(date);
   // Nothing has been weighed tomorrow.
   const nextDisabled = isFutureDay(addDays(date, 1));
@@ -76,7 +79,7 @@ export function DayStepper({ date, onChange, onToday }: DayStepperProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -108,4 +111,4 @@ const styles = StyleSheet.create({
   todayHidden: {
     opacity: 0,
   },
-});
+}));

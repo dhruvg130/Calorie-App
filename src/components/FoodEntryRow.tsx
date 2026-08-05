@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import type { FoodEntry } from '@/api/entries';
 import { formatTime } from '@/lib/date';
-import { colors, radius, shadows, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, shadows, spacing } from '@/theme';
 
 /** Each entry method gets its own glyph so the list shows provenance at a glance. */
 const SOURCE_ICONS: Record<FoodEntry['source'], keyof typeof Ionicons.glyphMap> = {
@@ -20,6 +21,8 @@ type FoodEntryRowProps = {
 };
 
 export function FoodEntryRow({ entry, onPress }: FoodEntryRowProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const servingLabel = `${formatQuantity(entry.servingQuantity)} × ${entry.servingUnit}`;
 
   return (
@@ -54,7 +57,7 @@ function formatQuantity(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -79,4 +82,4 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-});
+}));

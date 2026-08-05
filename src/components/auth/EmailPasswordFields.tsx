@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Pressable, type TextInput } from 'react-native';
 
 import { Input } from '@/components/ui';
-import { colors } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
 
 type EmailPasswordFieldsProps = {
   email: string;
@@ -31,6 +31,7 @@ export function EmailPasswordFields({
   onSubmit,
   editable = true,
 }: EmailPasswordFieldsProps) {
+  const colors = useColors();
   const [visible, setVisible] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 

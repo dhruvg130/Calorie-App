@@ -11,7 +11,7 @@ import { envErrors, isEnvConfigured } from '@/lib/env';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { SelectedDayProvider } from '@/providers/SelectedDayProvider';
-import { colors } from '@/theme';
+import { ThemeProvider, useTheme } from '@/providers/ThemeProvider';
 
 export default function RootLayout() {
   // Rendering the setup screen before any provider mounts means a misconfigured
@@ -19,8 +19,10 @@ export default function RootLayout() {
   if (!isEnvConfigured) {
     return (
       <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <ConfigurationNeeded problems={envErrors} />
+        <ThemeProvider>
+          <ThemedStatusBar />
+          <ConfigurationNeeded problems={envErrors} />
+        </ThemeProvider>
       </SafeAreaProvider>
     );
   }
@@ -28,21 +30,32 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <QueryProvider>
-          {/* AuthProvider sits inside QueryProvider because signing out clears
-              the query cache. */}
-          <AuthProvider>
-            {/* Above the navigator so Home, the Add tab, the three method
-                screens and confirm all agree on which day is being logged. */}
-            <SelectedDayProvider>
-              <StatusBar style="dark" />
-              <RootNavigator />
-            </SelectedDayProvider>
-          </AuthProvider>
-        </QueryProvider>
+        {/* Outermost of the app providers: every screen and every piece of
+            chrome below reads its palette from here. */}
+        <ThemeProvider>
+          <QueryProvider>
+            {/* AuthProvider sits inside QueryProvider because signing out clears
+                the query cache. */}
+            <AuthProvider>
+              {/* Above the navigator so Home, the Add tab, the three method
+                  screens and confirm all agree on which day is being logged. */}
+              <SelectedDayProvider>
+                <ThemedStatusBar />
+                <RootNavigator />
+              </SelectedDayProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** Light glyphs on a dark background, and the reverse — otherwise the clock
+ *  and battery disappear the moment the theme is toggled. */
+function ThemedStatusBar() {
+  const { scheme } = useTheme();
+  return <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />;
 }
 
 /**
@@ -70,6 +83,7 @@ const MINIMUM_SPLASH_MS: number = 1900;
 
 function RootNavigator() {
   const { session, initializing } = useAuth();
+  const { colors } = useTheme();
   const [splashFinished, setSplashFinished] = useState(MINIMUM_SPLASH_MS === 0);
 
   useEffect(() => {

@@ -2,13 +2,13 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Banner, Button, EmptyState, Screen, Text } from '@/components/ui';
 import { toUserMessage } from '@/lib/errors';
 import { foodRecognizer } from '@/services/recognition';
 import { encodeHandoff } from '@/services/nutrition/handoff';
-import { colors, radius, spacing } from '@/theme';
+import { makeStyles, radius, spacing } from '@/theme';
 
 /** Accepted at pick time; the bucket also enforces its own MIME allowlist. */
 const ALLOWED_MIME_TYPES = ['image/jpg', 'image/jpeg', 'image/png', 'image/webp'];
@@ -17,6 +17,7 @@ const ALLOWED_MIME_TYPES = ['image/jpg', 'image/jpeg', 'image/png', 'image/webp'
 const MAX_PICK_BYTES = 15 * 1024 * 1024;
 
 export default function PhotoScreen() {
+  const styles = useStyles();
   const router = useRouter();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -178,7 +179,7 @@ export default function PhotoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   content: {
     paddingTop: spacing.lg,
     gap: spacing.lg,
@@ -196,4 +197,4 @@ const styles = StyleSheet.create({
   errorWrapper: {
     paddingTop: spacing.lg,
   },
-});
+}));

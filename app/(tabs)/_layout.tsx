@@ -3,9 +3,12 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 
 import { isWhoopConfigured } from '@/api/whoop';
-import { colors, spacing, typography } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { spacing, typography } from '@/theme';
 
 export default function TabsLayout() {
+  const colors = useColors();
+
   return (
     <Tabs
       screenOptions={{

@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import type { MealType } from '@/lib/database.types';
-import { colors, radius, spacing } from '@/theme';
+import { makeStyles, radius, spacing } from '@/theme';
 
 export const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -29,6 +29,8 @@ type MealTypePickerProps = {
 };
 
 export function MealTypePicker({ value, onChange, label = 'Meal' }: MealTypePickerProps) {
+  const styles = useStyles();
+
   return (
     <View style={styles.container}>
       <Text variant="captionMedium" color="secondary" style={styles.label}>
@@ -64,7 +66,7 @@ export function MealTypePicker({ value, onChange, label = 'Meal' }: MealTypePick
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     gap: spacing.xs,
   },
@@ -90,4 +92,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-});
+}));

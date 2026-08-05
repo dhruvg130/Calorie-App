@@ -1,6 +1,6 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, View } from 'react-native';
 
-import { colors, radius, shadows, spacing } from '@/theme';
+import { makeStyles, radius, shadows, spacing } from '@/theme';
 
 import { Button } from './Button';
 import { Text } from './Text';
@@ -37,6 +37,8 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const styles = useStyles();
+
   return (
     <Modal
       visible={visible}
@@ -81,7 +83,7 @@ statusBarTranslucent
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   backdrop: {
     flex: 1,
     backgroundColor: colors.overlay,
@@ -106,4 +108,4 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.md,
   },
-});
+}));

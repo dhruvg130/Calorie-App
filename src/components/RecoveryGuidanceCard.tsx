@@ -1,25 +1,28 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Card, Text } from '@/components/ui';
 import { GUIDANCE_DISCLAIMER, recoveryGuidance } from '@/lib/recoveryGuidance';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing, type Palette } from '@/theme';
 
 type RecoveryGuidanceCardProps = {
   recoveryScore: number;
   dailyGoal: number;
 };
 
-const BAND_COLOR = {
-  green: colors.primary,
-  yellow: colors.warning,
-  red: colors.danger,
-} as const;
+const bandColor = (colors: Palette) =>
+  ({
+    green: colors.primary,
+    yellow: colors.warning,
+    red: colors.danger,
+  }) as const;
 
-const BAND_TINT = {
-  green: colors.primaryLight,
-  yellow: colors.warningLight,
-  red: colors.dangerLight,
-} as const;
+const bandTint = (colors: Palette) =>
+  ({
+    green: colors.primaryLight,
+    yellow: colors.warningLight,
+    red: colors.dangerLight,
+  }) as const;
 
 /**
  * The recovery score turned into something actionable.
@@ -28,13 +31,15 @@ const BAND_TINT = {
  * do about it, which is the whole point of pulling the data in.
  */
 export function RecoveryGuidanceCard({ recoveryScore, dailyGoal }: RecoveryGuidanceCardProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const guidance = recoveryGuidance(recoveryScore, dailyGoal);
-  const accent = BAND_COLOR[guidance.band];
+  const accent = bandColor(colors)[guidance.band];
 
   return (
     <Card style={styles.card}>
       <View style={styles.headerRow}>
-        <View style={[styles.scorePill, { backgroundColor: BAND_TINT[guidance.band] }]}>
+        <View style={[styles.scorePill, { backgroundColor: bandTint(colors)[guidance.band] }]}>
           <Text variant="captionMedium" style={{ color: accent }}>
             {recoveryScore}%
           </Text>
@@ -63,7 +68,7 @@ export function RecoveryGuidanceCard({ recoveryScore, dailyGoal }: RecoveryGuida
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   card: {
     gap: spacing.md,
   },
@@ -88,4 +93,4 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
-});
+}));

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { earnedCalories, isWhoopConfigured, recoveryBand, type WhoopDay } from '@/api/whoop';
 import { Banner, Button, Card, ConfirmDialog, Text } from '@/components/ui';
@@ -12,7 +12,8 @@ import {
   useSyncWhoop,
   useWhoopConnection,
 } from '@/hooks/useWhoop';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing, type Palette } from '@/theme';
 
 type WhoopCardProps = {
   userId: string;
@@ -22,11 +23,12 @@ type WhoopCardProps = {
   isToday: boolean;
 };
 
-const BAND_COLOR = {
-  green: colors.primary,
-  yellow: colors.warning,
-  red: colors.danger,
-} as const;
+const bandColor = (colors: Palette) =>
+  ({
+    green: colors.primary,
+    yellow: colors.warning,
+    red: colors.danger,
+  }) as const;
 
 const BAND_LABEL = {
   green: 'Recovered',
@@ -46,6 +48,8 @@ function formatDuration(minutes: number): string {
  * focused on food.
  */
 export function WhoopCard({ userId, day, isToday }: WhoopCardProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const connectionQuery = useWhoopConnection(userId);
   const connect = useConnectWhoop(userId);
   const sync = useSyncWhoop(userId);
@@ -168,7 +172,7 @@ export function WhoopCard({ userId, day, isToday }: WhoopCardProps) {
           <>
             {band ? (
               <View style={styles.recoveryRow}>
-                <View style={[styles.dot, { backgroundColor: BAND_COLOR[band] }]} />
+                <View style={[styles.dot, { backgroundColor: bandColor(colors)[band] }]} />
                 <Text variant="display">{recovery}%</Text>
                 <Text variant="body" color="secondary" style={styles.bandLabel}>
                   {BAND_LABEL[band]}
@@ -226,6 +230,8 @@ export function WhoopCard({ userId, day, isToday }: WhoopCardProps) {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
+
   return (
     <View style={styles.metric}>
       <Text variant="caption" color="tertiary">
@@ -236,7 +242,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   card: {
     gap: spacing.md,
   },
@@ -269,4 +275,4 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
   },
-});
+}));

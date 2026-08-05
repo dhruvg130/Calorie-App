@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import type { DayTotals } from '@/api/entries';
@@ -8,7 +8,8 @@ import type { WhoopDay } from '@/api/whoop';
 import { Text } from '@/components/ui';
 import { addDays, localDayKey } from '@/lib/date';
 import type { WeightUnit } from '@/lib/database.types';
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 type CombinedTrendChartProps = {
   weightEntries: WeightEntry[] | undefined;
@@ -55,6 +56,9 @@ export function CombinedTrendChart({
   unit,
   days = 30,
 }: CombinedTrendChartProps) {
+  const colors = useColors();
+  const styles = useStyles();
+
   const { rows, window } = useMemo(() => {
     const today = new Date();
     const win = Array.from({ length: days }, (_, i) => addDays(today, -(days - 1 - i)));
@@ -107,7 +111,7 @@ export function CombinedTrendChart({
     ];
 
     return { rows: built, window: win };
-  }, [weightEntries, whoopDays, calorieTotals, unit, days]);
+  }, [weightEntries, whoopDays, calorieTotals, unit, days, colors]);
 
   const minT = window[0]!.getTime();
   const maxT = window[window.length - 1]!.getTime();
@@ -142,6 +146,8 @@ export function CombinedTrendChart({
 }
 
 function TrendRow({ row, minT, maxT }: { row: Row; minT: number; maxT: number }) {
+  const colors = useColors();
+  const styles = useStyles();
   const { points, color, label, format } = row;
 
   const latest = points.length > 0 ? points[points.length - 1]!.v : null;
@@ -237,7 +243,7 @@ function TrendRow({ row, minT, maxT }: { row: Row; minT: number; maxT: number })
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -273,4 +279,4 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: spacing.sm,
   },
-});
+}));

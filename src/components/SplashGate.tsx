@@ -14,7 +14,8 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 
 import { Text } from '@/components/ui';
-import { colors, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, spacing } from '@/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -42,6 +43,8 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
  * visible on a genuinely slow start, where there is something to wait for.
  */
 export function SplashGate() {
+  const colors = useColors();
+  const styles = useStyles();
   // 1 = empty ring, 0 = closed. Matches strokeDashoffset's own direction.
   const sweep = useSharedValue(1);
   const markScale = useSharedValue(0.6);
@@ -149,7 +152,7 @@ export function SplashGate() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     flex: 1,
     alignItems: 'center',
@@ -168,4 +171,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

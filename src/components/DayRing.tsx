@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Text } from '@/components/ui';
-import { colors } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
 
 type DayRingProps = {
   /** Day-of-month number shown in the middle. */
@@ -28,6 +28,7 @@ export function DayRing({
   disabled,
   size = 38,
 }: DayRingProps) {
+  const colors = useColors();
   const stroke = 3;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;

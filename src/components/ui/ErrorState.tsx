@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { colors, radius, spacing } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing } from '@/theme';
 
 import { Button } from './Button';
 import { Text } from './Text';
@@ -14,6 +15,9 @@ type ErrorStateProps = {
 };
 
 export function ErrorState({ message, onRetry, compact = false }: ErrorStateProps) {
+  const colors = useColors();
+  const styles = useStyles();
+
   return (
     <View style={[styles.container, compact && styles.compact]}>
       <View style={styles.iconCircle}>
@@ -36,7 +40,7 @@ export function ErrorState({ message, onRetry, compact = false }: ErrorStateProp
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   container: {
     alignItems: 'center',
     paddingVertical: spacing.xxl,
@@ -61,4 +65,4 @@ const styles = StyleSheet.create({
   retry: {
     marginTop: spacing.lg,
   },
-});
+}));
