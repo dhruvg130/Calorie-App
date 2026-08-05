@@ -22,6 +22,8 @@ export type Database = {
         Row: {
           id: string;
           daily_calorie_goal: number;
+          /** Null means "derive the target from bodyweight and strain". */
+          daily_protein_goal: number | null;
           weight_unit: WeightUnit;
           created_at: string;
           updated_at: string;
@@ -29,10 +31,12 @@ export type Database = {
         Insert: {
           id: string;
           daily_calorie_goal?: number;
+          daily_protein_goal?: number | null;
           weight_unit?: WeightUnit;
         };
         Update: {
           daily_calorie_goal?: number;
+          daily_protein_goal?: number | null;
           weight_unit?: WeightUnit;
         };
         Relationships: [];

@@ -7,6 +7,7 @@ import {
   DEFAULT_WEIGHT_UNIT,
   fetchProfile,
   updateDailyGoal,
+  updateProteinGoal,
   updateWeightUnit,
   type Profile,
 } from '@/api/profile';
@@ -28,6 +29,9 @@ export function useProfile(userId: string) {
     // Home should render immediately with a sensible target rather than
     // showing a blank goal while the profile is in flight.
     dailyGoal: query.data?.dailyCalorieGoal ?? DEFAULT_DAILY_GOAL,
+    // No default: null means "no custom goal", which is what makes the derived
+    // bodyweight target the fallback rather than a number invented here.
+    proteinGoal: query.data?.dailyProteinGoal ?? null,
     weightUnit: query.data?.weightUnit ?? DEFAULT_WEIGHT_UNIT,
   };
 }
@@ -37,6 +41,19 @@ export function useUpdateDailyGoal(userId: string) {
 
   return useMutation({
     mutationFn: (goal: number) => updateDailyGoal(userId, goal),
+    onSuccess: (profile: Profile) => {
+      queryClient.setQueryData(profileKeys.detail(userId), profile);
+    },
+  });
+}
+
+/** `null` clears the custom goal and hands the target back to the bodyweight
+ *  calculation. */
+export function useUpdateProteinGoal(userId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (goal: number | null) => updateProteinGoal(userId, goal),
     onSuccess: (profile: Profile) => {
       queryClient.setQueryData(profileKeys.detail(userId), profile);
     },

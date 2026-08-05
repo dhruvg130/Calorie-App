@@ -17,6 +17,8 @@ export const LIMITS = {
   macroMax: 5_000,
   goalMin: 500,
   goalMax: 10_000,
+  proteinGoalMin: 20,
+  proteinGoalMax: 400,
   weightKgMin: 20,
   weightKgMax: 500,
   passwordMin: 8,
@@ -141,6 +143,18 @@ export const dailyGoalSchema = z
   .int('Enter a whole number')
   .min(LIMITS.goalMin, `Goal must be at least ${LIMITS.goalMin} calories`)
   .max(LIMITS.goalMax, `Goal must be ${LIMITS.goalMax} calories or less`);
+
+/**
+ * Grams of protein per day. Mirrors the profiles_protein_goal_range CHECK.
+ *
+ * Null is not handled here: "no custom goal" is the absence of a value, and
+ * clearing it is a separate call rather than a value to validate.
+ */
+export const proteinGoalSchema = z
+  .number()
+  .int('Enter a whole number')
+  .min(LIMITS.proteinGoalMin, `Goal must be at least ${LIMITS.proteinGoalMin} g`)
+  .max(LIMITS.proteinGoalMax, `Goal must be ${LIMITS.proteinGoalMax} g or less`);
 
 /**
  * Text inputs hand back strings; this turns one into a number without the

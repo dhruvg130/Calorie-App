@@ -23,33 +23,38 @@ import {
 import { formatRelativeDay, isToday } from '@/lib/date';
 import { toUserMessage } from '@/lib/errors';
 import { useDayTotals, useDayTotalsForDays, useEntriesForDay } from '@/hooks/useEntries';
-import { useProfile, useUpdateDailyGoal } from '@/hooks/useProfile';
+import { useProfile, useUpdateDailyGoal, useUpdateProteinGoal } from '@/hooks/useProfile';
 import { useWhoopDay, useWhoopDays } from '@/hooks/useWhoop';
 import { useWeightEntries, useWeightTrend } from '@/hooks/useWeight';
 import { earnedCalories } from '@/api/whoop';
 import { ProteinCard } from '@/components/ProteinCard';
+import { ProteinGoalSheet } from '@/components/ProteinGoalSheet';
 import { proteinTarget } from '@/lib/proteinTarget';
 import { localDayKey } from '@/lib/date';
 import { useAuth, useRequireUser } from '@/providers/AuthProvider';
 import { useSelectedDay } from '@/providers/SelectedDayProvider';
-import { colors, spacing } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
+import { spacing } from '@/theme';
 
 export default function HomeScreen() {
   const user = useRequireUser();
   const { signOut } = useAuth();
+  const { colors, scheme, toggleScheme } = useTheme();
   const router = useRouter();
 
   const { selectedDay: selectedDate, setSelectedDay: setSelectedDate, isViewingToday, resetToToday } =
     useSelectedDay();
   const [visibleDays, setVisibleDays] = useState<Date[]>([]);
   const [goalSheetOpen, setGoalSheetOpen] = useState(false);
+  const [proteinSheetOpen, setProteinSheetOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const entriesQuery = useEntriesForDay(user.id, selectedDate);
-  const { dailyGoal, isLoading: profileLoading } = useProfile(user.id);
+  const { dailyGoal, proteinGoal, isLoading: profileLoading } = useProfile(user.id);
   const updateGoal = useUpdateDailyGoal(user.id);
+  const updateProteinGoal = useUpdateProteinGoal(user.id);
 
   const totals = useDayTotals(entriesQuery.data, dailyGoal);
 
@@ -108,6 +113,13 @@ export default function HomeScreen() {
       await updateGoal.mutateAsync(goal);
     },
     [updateGoal],
+  );
+
+  const handleSaveProteinGoal = useCallback(
+    async (goal: number | null) => {
+      await updateProteinGoal.mutateAsync(goal);
+    },
+    [updateProteinGoal],
   );
 
   const confirmSignOut = useCallback(async () => {
@@ -178,15 +190,34 @@ export default function HomeScreen() {
                 <Text variant="title">{formatRelativeDay(selectedDate)}</Text>
               </View>
 
-              <Pressable
-                onPress={() => setSignOutOpen(true)}
-                hitSlop={10}
-                style={styles.iconButton}
-                accessibilityRole="button"
-                accessibilityLabel="Sign out"
-              >
-                <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
-              </Pressable>
+              <View style={styles.titleActions}>
+                <Pressable
+                  onPress={toggleScheme}
+                  hitSlop={10}
+                  style={styles.iconButton}
+                  accessibilityRole="button"
+                  accessibilityState={{ checked: scheme === 'dark' }}
+                  accessibilityLabel={
+                    scheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+                  }
+                >
+                  <Ionicons
+                    name={scheme === 'dark' ? 'sunny-outline' : 'moon-outline'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setSignOutOpen(true)}
+                  hitSlop={10}
+                  style={styles.iconButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign out"
+                >
+                  <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
+                </Pressable>
+              </View>
             </View>
 
             {signOutError ? <Banner message={signOutError} /> : null}
@@ -210,11 +241,15 @@ export default function HomeScreen() {
               earned={earnedCalories(whoopDay)}
             />
 
-            {/* Hidden rather than guessed at when no weight has been logged —
-                a target invented without one is not a recommendation. */}
-            {protein ? (
-              <ProteinCard consumed={totals.macros.proteinG} target={protein} />
-            ) : null}
+            {/* The card hides itself when there is neither a goal the user set
+                nor a weight to derive one from — a target invented without
+                either is not a recommendation. */}
+            <ProteinCard
+              consumed={totals.macros.proteinG}
+              target={protein}
+              customGrams={proteinGoal}
+              onEditGoal={() => setProteinSheetOpen(true)}
+            />
 
             <Text variant="overline" color="secondary" style={styles.sectionLabel}>
               {entriesQuery.data?.length
@@ -265,6 +300,15 @@ export default function HomeScreen() {
         onSave={handleSaveGoal}
       />
 
+      <ProteinGoalSheet
+        visible={proteinSheetOpen}
+        currentGoal={proteinGoal}
+        suggestedGrams={protein?.grams ?? null}
+        saving={updateProteinGoal.isPending}
+        onDismiss={() => setProteinSheetOpen(false)}
+        onSave={handleSaveProteinGoal}
+      />
+
       <ConfirmDialog
         visible={signOutOpen}
         title="Sign out"
@@ -300,6 +344,10 @@ const styles = StyleSheet.create({
   },
   titleText: {
     gap: 2,
+  },
+  titleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   iconButton: {
     width: 40,
