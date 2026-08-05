@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { deleteMealImage, getSignedImageUrl } from '@/api/images';
 import { ServingForm, type ServingFormValues } from '@/components/ServingForm';
@@ -10,9 +10,12 @@ import { Button, ConfirmDialog, ErrorState, Screen } from '@/components/ui';
 import { useDeleteEntry, useEntry, useUpdateEntry } from '@/hooks/useEntries';
 import { toUserMessage } from '@/lib/errors';
 import { useRequireUser } from '@/providers/AuthProvider';
-import { colors, radius, spacing, typography } from '@/theme';
+import { useColors } from '@/providers/ThemeProvider';
+import { makeStyles, radius, spacing, typography } from '@/theme';
 
 export default function EditEntryScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const user = useRequireUser();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -126,6 +129,7 @@ export default function EditEntryScreen() {
             caloriesPerServing: entry.caloriesPerServing,
             servingQuantity: entry.servingQuantity,
             servingUnit: entry.servingUnit,
+            proteinG: entry.proteinG,
             mealType: entry.mealType,
           }}
           submitLabel="Save changes"
@@ -157,7 +161,7 @@ export default function EditEntryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -173,4 +177,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     backgroundColor: colors.surfaceMuted,
   },
-});
+}));

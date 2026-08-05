@@ -112,6 +112,7 @@ export default function ConfirmScreen() {
             caloriesPerServing: item.caloriesPerServing,
             servingQuantity: item.servingQuantity,
             servingUnit: item.servingUnit,
+            proteinG: item.proteinG,
           }}
           submitLabel={isViewingToday ? 'Add to today' : `Add to ${formatRelativeDay(selectedDay)}`}
           submitting={busy}
@@ -125,7 +126,10 @@ export default function ConfirmScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingTop: spacing.lg,
+    // Just enough to clear the navigation header. The screen's headline is
+    // that header's title, so a full step of space below it read as a gap
+    // rather than as separation.
+    paddingTop: spacing.xs,
     gap: spacing.lg,
   },
 });
