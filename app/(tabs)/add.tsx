@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { FoodResultRow } from '@/components/FoodResultRow';
 import { Banner, EntryListSkeleton, Screen, Text } from '@/components/ui';
 import { useRecentFoods } from '@/hooks/useEntries';
 import { useRequireUser } from '@/providers/AuthProvider';
+import { useColors } from '@/providers/ThemeProvider';
 import { encodeHandoff } from '@/services/nutrition/handoff';
 import { formatRelativeDay } from '@/lib/date';
 import { useSelectedDay } from '@/providers/SelectedDayProvider';
-import { colors, radius, shadows, spacing } from '@/theme';
+import { makeStyles, radius, shadows, spacing } from '@/theme';
 
 type Method = {
   href: Href;
@@ -43,6 +44,8 @@ const METHODS: Method[] = [
 ];
 
 export default function AddScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const { selectedDay, isViewingToday } = useSelectedDay();
   const user = useRequireUser();
@@ -66,6 +69,35 @@ export default function AddScreen() {
         </View>
       )}
 
+      <View style={styles.methods}>
+        {METHODS.map((method) => (
+          <Pressable
+            key={method.title}
+            onPress={() => router.push(method.href)}
+            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={method.title}
+            accessibilityHint={method.description}
+          >
+            <View style={styles.iconTile}>
+              <Ionicons name={method.icon} size={22} color={colors.primary} />
+            </View>
+
+            <View style={styles.cardText}>
+              <Text variant="subheading">{method.title}</Text>
+              <Text variant="caption" color="secondary">
+                {method.description}
+              </Text>
+            </View>
+
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Below the ways in rather than above them: the shortcut is worth having
+          but it is not the answer to "how do I log this", and sitting on top it
+          pushed the three methods down the screen. */}
       {recent.isPending ? (
         <View style={styles.recent}>
           <Text variant="overline" color="secondary" style={styles.recentLabel}>
@@ -116,37 +148,11 @@ export default function AddScreen() {
           ))}
         </View>
       ) : null}
-
-      <View style={styles.methods}>
-        {METHODS.map((method) => (
-          <Pressable
-            key={method.title}
-            onPress={() => router.push(method.href)}
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={method.title}
-            accessibilityHint={method.description}
-          >
-            <View style={styles.iconTile}>
-              <Ionicons name={method.icon} size={22} color={colors.primary} />
-            </View>
-
-            <View style={styles.cardText}>
-              <Text variant="subheading">{method.title}</Text>
-              <Text variant="caption" color="secondary">
-                {method.description}
-              </Text>
-            </View>
-
-            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-          </Pressable>
-        ))}
-      </View>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   header: {
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
@@ -157,7 +163,7 @@ const styles = StyleSheet.create({
   },
   recent: {
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    marginTop: spacing.xl,
   },
   recentLabel: {
     marginLeft: spacing.xs,
@@ -190,4 +196,4 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-});
+}));
